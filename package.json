@@ -1,0 +1,9 @@
+{
+  "name": "dahlia-application-generator",
+  "version": "1.0.0",
+  "description": "Tool to generate applications for Dahlia housing listings",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
