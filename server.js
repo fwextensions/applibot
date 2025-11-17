@@ -2,7 +2,8 @@ const http = require('http');
 const https = require('https');
 const url = require('url');
 
-const PORT = 3000;
+let PORT = 3000;
+const MAX_PORT_ATTEMPTS = 10;
 const DAHLIA_BASE_URL = 'https://dahlia-full.herokuapp.com';
 
 const server = http.createServer((req, res) => {
@@ -59,7 +60,28 @@ const server = http.createServer((req, res) => {
     }
 });
 
-server.listen(PORT, () => {
-    console.log(`Proxy server running at http://localhost:${PORT}`);
-    console.log(`Open index.html in your browser to use the application`);
-});
+function startServer(port, attempts = 0) {
+    if (attempts >= MAX_PORT_ATTEMPTS) {
+        console.error(`Failed to find an available port after ${MAX_PORT_ATTEMPTS} attempts`);
+        process.exit(1);
+    }
+
+    server.listen(port, () => {
+        console.log(`Proxy server running at http://localhost:${port}`);
+        if (port !== 3000) {
+            console.log(`Note: Port 3000 was in use, using port ${port} instead`);
+            console.log(`Update the fetch URLs in app.js to use http://localhost:${port}`);
+        }
+        console.log(`Open index.html in your browser to use the application`);
+    }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log(`Port ${port} is in use, trying port ${port + 1}...`);
+            startServer(port + 1, attempts + 1);
+        } else {
+            console.error('Server error:', err);
+            process.exit(1);
+        }
+    });
+}
+
+startServer(PORT);

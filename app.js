@@ -1,5 +1,10 @@
 let isGenerating = false;
 
+// Access faker from the global scope (loaded via CDN)
+const { faker } = window;
+
+console.log("faker", faker);
+
 const PREFERENCE_NAME_MAP = {
     "Veteran with Certificate of Preference (V-COP)": "V-COP",
     "Certificate of Preference (COP)": "COP",
@@ -34,9 +39,14 @@ function generateEmail() {
     return `dahlia.internal+${Date.now()}@gmail.com`;
 }
 
+function getServerUrl() {
+    const port = document.getElementById('serverPort').value;
+    return `http://localhost:${port}`;
+}
+
 async function getPreferences(listingId) {
     try {
-        const response = await fetch(`http://localhost:3000/api/v1/listings/${listingId}/preferences`);
+        const response = await fetch(`${getServerUrl()}/api/v1/listings/${listingId}/preferences`);
         if (!response.ok) {
             throw new Error(`Failed to fetch preferences: ${response.status}`);
         }
@@ -73,9 +83,9 @@ async function submitApplication(listingId, preferences) {
             listingID: listingId,
             primaryApplicant: {
                 email: email,
-                firstName: "Test",
+                firstName: faker.person.firstName(),
                 middleName: new Date().toISOString(),
-                lastName: "User",
+                lastName: faker.person.lastName(),
                 noPhone: true,
                 phone: null,
                 phoneType: null,
@@ -132,7 +142,7 @@ async function submitApplication(listingId, preferences) {
         }
     };
 
-    const response = await fetch('http://localhost:3000/api/v1/short-form/application', {
+    const response = await fetch(`${getServerUrl()}/api/v1/short-form/application`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

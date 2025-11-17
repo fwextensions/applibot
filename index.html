@@ -9,12 +9,17 @@
 <body>
     <div class="container">
         <h1>Dahlia Application Generator</h1>
-        
+
+        <div class="form-group">
+            <label for="serverPort">Server Port:</label>
+            <input type="number" id="serverPort" min="3000" max="9999" value="3000">
+        </div>
+
         <div class="form-group">
             <label for="listingId">Listing ID:</label>
             <input type="text" id="listingId" placeholder="e.g., a0Wbb000001JZxZEAW" value="a0Wbb000001JZxZEAW">
         </div>
-        
+
         <div class="form-group">
             <label for="numApplications">Number of Applications:</label>
             <input type="number" id="numApplications" min="1" max="100" value="1">
@@ -25,6 +30,16 @@
         <div id="status"></div>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module">
+        import { faker } from 'https://cdn.jsdelivr.net/npm/@faker-js/faker@9.2.0/+esm';
+
+        // Make faker available globally
+        window.faker = faker;
+
+        // Load app.js after faker is available
+        const script = document.createElement('script');
+        script.src = 'app.js';
+        document.body.appendChild(script);
+    </script>
 </body>
 </html>
