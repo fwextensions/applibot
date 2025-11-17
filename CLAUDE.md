@@ -4,33 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the **Dahlia Application Generator** - a testing/development tool that generates housing applications for the Dahlia housing portal (San Francisco's affordable housing application system). The tool consists of a simple web interface that communicates with a local proxy server, which in turn communicates with the Dahlia API at `https://dahlia-full.herokuapp.com`.
+This is the **Dahlia Application Generator** - a testing/development tool that generates housing applications for the Dahlia housing portal (San Francisco's affordable housing application system). Built with Vite for modern development workflow with hot module replacement and optimized builds.
 
 ## Architecture
 
-The application has three main components:
+### Frontend Application (Vite + Vanilla JS)
+- **Build Tool**: Vite for development server and bundling
+- **Entry Point**: `index.html` → `src/main.js`
+- **Styling**: `src/style.css` (imported in main.js)
+- **Dependencies**: `@faker-js/faker` for generating realistic test data
 
-### 1. Frontend (`index.html` + `app.js` + `styles.css`)
-- Simple HTML form interface with configurable server port, listing ID, and application count
-- Client-side JavaScript handles form logic and API communication
-- Makes requests to local proxy server at configurable port (defaults to `http://localhost:3000`)
-- Uses faker.js (via CDN) to generate random first/last names for test applicants
-
-### 2. Proxy Server (`server.js`)
-- Node.js HTTP server with automatic port fallback
-- Attempts to bind to port 3000, automatically tries higher ports (3001, 3002, etc.) if in use
-- Tries up to 10 ports before giving up
-- Proxies API requests from frontend to Dahlia API
-- Handles CORS headers to allow local development
-- Only proxies `/api/*` endpoints to `https://dahlia-full.herokuapp.com`
-
-### 3. Application Logic (`app.js`)
+### Application Logic (`src/main.js`)
 The application generator:
+- Uses ES modules with proper imports for faker.js
 - Fetches preferences for a listing using `/api/v1/listings/{listingId}/preferences`
 - Generates unique test applications with:
+  - Random first/last names via faker.js
   - Unique session IDs (UUID format)
   - Timestamped email addresses (`dahlia.internal+{timestamp}@gmail.com`)
-  - Fixed test applicant data (name, DOB, address at 1 S VAN NESS AVE)
+  - ISO timestamp as middle name for uniqueness tracking
+  - Fixed test applicant data (DOB, address at 1 S VAN NESS AVE)
 - Maps San Francisco housing preferences to their developer names:
   - Certificate of Preference (COP, V-COP)
   - Displaced Tenant Housing Preference (DTHP, V-DTHP)
@@ -39,27 +32,34 @@ The application generator:
 - Submits applications via POST to `/api/v1/short-form/application`
 - Batches submissions with 500ms delay between each to avoid overwhelming the server
 
+### Vite Configuration (`vite.config.js`)
+- **Dev Server**: Runs on port 3000 by default with automatic fallback if port is in use (`strictPort: false`)
+- **Proxy**: All `/api/*` requests are proxied to `https://dahlia-full.herokuapp.com`
+  - `changeOrigin: true` for proper host headers
+  - `secure: true` for HTTPS validation
+- This eliminates the need for a separate proxy server (though `server.js` still exists for standalone use)
+
 ## Running the Application
 
-1. Start the proxy server:
-   ```bash
-   node server.js
-   ```
-   This will start the server on port 3000 (or the next available port if 3000 is in use)
-   - The server will log which port it successfully binds to
-   - If it uses a different port, update the "Server Port" field in the UI accordingly
+**Development mode (recommended):**
+```bash
+npm run dev
+```
+This starts the Vite dev server with HMR on port 3000 (or next available port). The API proxy is automatically configured.
 
-2. Open `index.html` in a web browser
+**Other commands:**
+- `npm run build` - Build for production (outputs to `dist/`)
+- `npm run preview` - Preview production build locally
+- `npm run server` - Run standalone proxy server (legacy, not needed with Vite)
 
-3. Configure the application:
-   - **Server Port**: Set to match the port shown in the server console (defaults to 3000)
+## Development Workflow
+
+1. Start the dev server: `npm run dev`
+2. Open the URL shown in terminal (typically `http://localhost:3000`)
+3. Make code changes - Vite will hot-reload automatically
+4. Configure the application:
    - **Listing ID**: Enter a Dahlia listing ID (e.g., `a0Wbb000001JZxZEAW`)
    - **Number of Applications**: How many test applications to generate
-
-## Development Commands
-
-- **Start server**: `node server.js` or `npm start`
-- **Test manually**: Open `index.html` in browser after starting server
 
 ## Key Technical Details
 
@@ -86,7 +86,25 @@ All applications use:
 - **Income**: $4,000 monthly (fixed)
 - **Phone**: No phone number (noPhone: true)
 
+## Project Structure
+
+```
+applibot/
+├── src/
+│   ├── main.js      # Main application logic with ES modules
+│   └── style.css    # Application styles
+├── index.html       # Entry HTML file
+├── vite.config.js   # Vite configuration with proxy setup
+├── package.json     # Dependencies and scripts
+├── server.js        # Legacy standalone proxy (not needed with Vite)
+├── app.js           # Legacy app file (replaced by src/main.js)
+├── styles.css       # Legacy styles (replaced by src/style.css)
+├── test.js          # Raw fetch requests from browser DevTools
+└── test.json        # HAR file with recorded network traffic
+```
+
 ## Auxiliary Files
 
 - `test.js`: Contains raw fetch requests copied from browser DevTools (network traffic capture)
 - `test.json`: HAR (HTTP Archive) file with recorded network traffic for debugging/reference
+- `server.js`, `app.js`, `styles.css`: Legacy files kept for reference but not used in Vite setup

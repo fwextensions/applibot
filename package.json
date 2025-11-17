@@ -1,12 +1,18 @@
 {
-  "name": "dahlia-application-generator",
-  "version": "1.0.0",
-  "description": "Tool to generate applications for Dahlia housing listings",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "@faker-js/faker": "^10.1.0"
-  }
+	"name": "dahlia-application-generator",
+	"version": "1.0.0",
+	"description": "Tool to generate applications for Dahlia housing listings",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build",
+		"preview": "vite preview",
+		"server": "node server.js"
+	},
+	"dependencies": {
+		"@faker-js/faker": "^10.1.0"
+	},
+	"devDependencies": {
+		"vite": "^7.2.2"
+	}
 }
