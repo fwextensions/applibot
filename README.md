@@ -50,7 +50,7 @@ npm start
 | Variable | Purpose | Default |
 | --- | --- | --- |
 | `APPLIBOT_URL` | Override the URL opened in the browser (useful when running `--host` or a tunnel). | `http://localhost:5173` |
-| `APPLIBOT_OPEN_DELAY` | Delay (ms) before the fallback URL opens if Vite hasnt printed a link. | `2000` |
+| `APPLIBOT_OPEN_DELAY` | Delay (ms) before the fallback URL opens if Vite hasn't printed a link. | `2000` |
 | `APPLIBOT_NO_OPEN` | Set to any truthy value to skip auto-opening the browser. | _unset_ |
 
 You can also bypass the CLI and run Vite directly:
