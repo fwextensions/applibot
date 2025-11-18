@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nMigrate to React 19 + Tailwind CSS v4 and add application tracking display\n\n- Replaces vanilla JS with React 19 components for state management\n- Integrates Tailwind CSS v4 for modern styling with utility classes\n- Adds real-time display of created applications showing name, email, and count\n- Automatically resets the applications list when listing ID changes\n- Links each application to its Salesforce record for easy access\n- Updates CLAUDE.md to reflect new React/Tailwind architecture\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
