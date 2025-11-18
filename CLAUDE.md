@@ -4,19 +4,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the **Dahlia Application Generator** - a testing/development tool that generates housing applications for the Dahlia housing portal (San Francisco's affordable housing application system). Built with Vite for modern development workflow with hot module replacement and optimized builds.
+This is the **Dahlia Application Generator** - a testing/development tool that generates housing applications for the Dahlia housing portal (San Francisco's affordable housing application system). Built with React 19, Tailwind CSS v4, and Vite for a modern development experience.
 
 ## Architecture
 
-### Frontend Application (Vite + Vanilla JS)
-- **Build Tool**: Vite for development server and bundling
-- **Entry Point**: `index.html` → `src/main.js`
-- **Styling**: `src/style.css` (imported in main.js)
+### Tech Stack
+- **Framework**: React 19 (RC)
+- **Styling**: Tailwind CSS v4 (beta)
+- **Build Tool**: Vite 7 with React and Tailwind plugins
 - **Dependencies**: `@faker-js/faker` for generating realistic test data
 
-### Application Logic (`src/main.js`)
-The application generator:
-- Uses ES modules with proper imports for faker.js
+### Frontend Application Structure
+- **Entry Point**: `index.html` → `src/main.jsx` → `src/App.jsx`
+- **Styling**: `src/index.css` (imports Tailwind CSS)
+- **Components**: Single-page application with React hooks for state management
+
+### Application Logic (`src/App.jsx`)
+The React application:
+- Uses React hooks (`useState`) for state management
 - Fetches preferences for a listing using `/api/v1/listings/{listingId}/preferences`
 - Generates unique test applications with:
   - Random first/last names via faker.js
@@ -31,13 +36,22 @@ The application generator:
   - Live or Work in San Francisco (L_W, V-L_W)
 - Submits applications via POST to `/api/v1/short-form/application`
 - Batches submissions with 500ms delay between each to avoid overwhelming the server
+- Modern UI with Tailwind CSS utility classes for styling
 
 ### Vite Configuration (`vite.config.js`)
+- **Plugins**:
+  - `@vitejs/plugin-react` - Enables React Fast Refresh and JSX transformation
+  - `@tailwindcss/vite` - Tailwind CSS v4 integration with Vite
 - **Dev Server**: Runs on port 3000 by default with automatic fallback if port is in use (`strictPort: false`)
 - **Proxy**: All `/api/*` requests are proxied to `https://dahlia-full.herokuapp.com`
   - `changeOrigin: true` for proper host headers
   - `secure: true` for HTTPS validation
 - This eliminates the need for a separate proxy server (though `server.js` still exists for standalone use)
+
+### Tailwind CSS Setup
+- **Version**: v4 (beta) - installed with `--legacy-peer-deps` due to Vite 7 compatibility
+- **Configuration**: Uses the new `@import "tailwindcss"` syntax in `src/index.css`
+- **No config file needed**: Tailwind v4 uses CSS-based configuration
 
 ## Running the Application
 
@@ -91,20 +105,31 @@ All applications use:
 ```
 applibot/
 ├── src/
-│   ├── main.js      # Main application logic with ES modules
-│   └── style.css    # Application styles
-├── index.html       # Entry HTML file
-├── vite.config.js   # Vite configuration with proxy setup
+│   ├── App.jsx      # Main React component with application logic
+│   ├── main.jsx     # React entry point (renders App to DOM)
+│   ├── index.css    # Tailwind CSS imports
+│   ├── main.js      # Legacy vanilla JS (replaced by App.jsx)
+│   └── style.css    # Legacy styles (replaced by index.css)
+├── index.html       # HTML entry file with root div
+├── vite.config.js   # Vite configuration with React, Tailwind, and proxy
 ├── package.json     # Dependencies and scripts
 ├── server.js        # Legacy standalone proxy (not needed with Vite)
-├── app.js           # Legacy app file (replaced by src/main.js)
-├── styles.css       # Legacy styles (replaced by src/style.css)
+├── app.js           # Legacy app file (replaced by src/App.jsx)
+├── styles.css       # Legacy styles (replaced by src/index.css)
 ├── test.js          # Raw fetch requests from browser DevTools
 └── test.json        # HAR file with recorded network traffic
 ```
 
-## Auxiliary Files
+## Legacy Files (Not Used in Current Setup)
+
+The following files are legacy code from previous iterations and are not used in the current React + Tailwind + Vite setup:
+
+- `app.js`: Original vanilla JS application logic (replaced by `src/App.jsx`)
+- `src/main.js`: Vanilla JS entry point (replaced by `src/main.jsx`)
+- `styles.css`, `src/style.css`: Legacy CSS files (replaced by `src/index.css` with Tailwind)
+- `server.js`: Standalone proxy server (Vite's built-in proxy handles this now)
+
+## Reference Files
 
 - `test.js`: Contains raw fetch requests copied from browser DevTools (network traffic capture)
 - `test.json`: HAR (HTTP Archive) file with recorded network traffic for debugging/reference
-- `server.js`, `app.js`, `styles.css`: Legacy files kept for reference but not used in Vite setup

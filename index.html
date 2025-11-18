@@ -6,24 +6,7 @@
     <title>Dahlia Application Generator</title>
 </head>
 <body>
-    <div class="container">
-        <h1>Dahlia Application Generator</h1>
-
-        <div class="form-group">
-            <label for="listingId">Listing ID:</label>
-            <input type="text" id="listingId" placeholder="e.g., a0Wbb000001JZxZEAW" value="a0Wbb000001JZxZEAW">
-        </div>
-
-        <div class="form-group">
-            <label for="numApplications">Number of Applications:</label>
-            <input type="number" id="numApplications" min="1" max="100" value="1">
-        </div>
-        
-        <button id="generateBtn" onclick="generateApplications()">Generate Applications</button>
-        
-        <div id="status"></div>
-    </div>
-
-    <script type="module" src="/src/main.js"></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
