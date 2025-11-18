@@ -1,13 +1,18 @@
 {
-	"name": "dahlia-application-generator",
-	"version": "1.0.0",
-	"description": "Tool to generate applications for Dahlia housing listings",
+	"name": "applibot",
+	"version": "0.0.0",
+	"description": "Tool to generate applications for DAHLIA housing listings",
+	"author": "John Dunning",
+	"private": true,
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
 		"build": "vite build",
 		"preview": "vite preview",
-		"server": "node server.js"
+		"start": "node ./bin/cli.js"
+	},
+	"bin": {
+		"applibot": "./bin/cli.js"
 	},
 	"dependencies": {
 		"@faker-js/faker": "^10.1.0",

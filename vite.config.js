@@ -8,8 +8,6 @@ export default defineConfig({
 		tailwindcss()
 	],
 	server: {
-		port: 3000,
-		strictPort: false, // If port 3000 is in use, automatically try next available port
 		proxy: {
 			"/api": {
 				target: "https://dahlia-full.herokuapp.com",

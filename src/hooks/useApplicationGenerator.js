@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { getPreferences, submitApplication } from "../services/applications";
 
-export default function useApplicationGenerator(defaultListingId = "a0Wbb000001JZxZEAW") {
+export default function useApplicationGenerator(defaultListingId = "") {
 	const [listingId, setListingId] = useState(defaultListingId);
 	const [currentListingId, setCurrentListingId] = useState(defaultListingId);
 	const [numApplications, setNumApplications] = useState(1);
