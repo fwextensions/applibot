@@ -26,34 +26,147 @@ export default function CsvUploader({ onUpload, isProcessing }) {
     reader.onload = (e) => {
       const text = e.target.result;
       try {
-        const rows = text.split("\n").map(row => row.trim()).filter(row => row);
-        if (rows.length === 0) {
+        const lines = text.split("\n").map(row => row.trim()).filter(row => row);
+        if (lines.length === 0) {
           setError("The CSV file is empty.");
           return;
         }
 
-        // Simple CSV parsing (assumes no commas in fields for now, or we can use a library if needed)
-        // Expected format: LastName, Email, ListingID, NumApplications
-        const parsedData = rows.map((row, index) => {
-          // Skip header if it looks like a header
-          if (index === 0 && row.toLowerCase().includes("lastname")) return null;
-          
-          const cols = row.split(",").map(c => c.trim());
-          if (cols.length < 4) return null;
+        const headers = lines[0].split(",").map(h => h.trim());
 
-          return {
-            lastName: cols[0],
-            email: cols[1],
-            listingId: cols[2],
-            numApplications: parseInt(cols[3], 10) || 1
+        // Check if this is a resume file (has Target Count)
+        const isResumeFile = headers.includes("Target Count") && headers.includes("Listing ID");
+
+        if (isResumeFile) {
+          const listingIdIndex = headers.indexOf("Listing ID");
+          const emailIndex = headers.indexOf("Email");
+          const lastNameIndex = headers.indexOf("Last Name");
+          const firstNameIndex = headers.indexOf("First Name");
+          const targetCountIndex = headers.indexOf("Target Count");
+          const appIdIndex = headers.findIndex(h => h.toLowerCase().includes("application id"));
+          const responseTimeIndex = headers.findIndex(h => h.toLowerCase().includes("response time"));
+
+          const groups = {};
+          const existingApps = [];
+
+          for (let i = 1; i < lines.length; i++) {
+            const currentLine = lines[i].trim();
+            if (!currentLine) continue;
+
+            const values = currentLine.split(",");
+            const listingId = values[listingIdIndex]?.trim();
+            const email = values[emailIndex]?.trim();
+            const lastName = values[lastNameIndex]?.trim();
+            const firstName = firstNameIndex !== -1 ? values[firstNameIndex]?.trim() : "";
+            const targetCount = parseInt(values[targetCountIndex]?.trim(), 10) || 0;
+            const appId = appIdIndex !== -1 ? values[appIdIndex]?.trim() : "";
+            const responseTime = responseTimeIndex !== -1 ? parseFloat(values[responseTimeIndex]?.trim()) : 0;
+
+            if (listingId && lastName) {
+              const key = `${listingId}-${lastName}`;
+              if (!groups[key]) {
+                groups[key] = {
+                  ListingID: listingId,
+                  LastName: lastName,
+                  TargetCount: targetCount,
+                  CompletedCount: 0,
+                  Rows: []
+                };
+              }
+              groups[key].CompletedCount++;
+              groups[key].Rows.push({ email, firstName });
+
+              if (appId) {
+                existingApps.push({
+                  firstName,
+                  lastName,
+                  email,
+                  id: appId,
+                  listingId,
+                  responseTime,
+                  targetCount
+                });
+              }
+            }
+          }
+
+          const resumeData = [];
+          Object.values(groups).forEach(group => {
+            const remaining = group.TargetCount - group.CompletedCount;
+            if (remaining > 0) {
+              // Try to find base email
+              let baseEmail = group.Rows[0].email;
+              for (const row of group.Rows) {
+                if (row.firstName && row.email.toLowerCase().includes(`+${row.firstName.toLowerCase()}`)) {
+                  // Found an alias, try to strip it
+                  const parts = row.email.split("@");
+                  if (parts.length === 2) {
+                    const localPart = parts[0];
+                    const aliasIndex = localPart.toLowerCase().lastIndexOf(`+${row.firstName.toLowerCase()}`);
+                    if (aliasIndex !== -1) {
+                      baseEmail = `${localPart.substring(0, aliasIndex)}@${parts[1]}`;
+                      break;
+                    }
+                  }
+                }
+              }
+
+              resumeData.push({
+                ListingID: group.ListingID,
+                Email: baseEmail,
+                LastName: group.LastName,
+                NumApplications: remaining
+              });
+            }
+          });
+
+          if (resumeData.length > 0) {
+            console.log("Resuming generation:", resumeData);
+            onUpload(resumeData, existingApps);
+          } else {
+            setError("All applications in this export file have already been generated.");
+          }
+          return;
+        }
+
+        // Standard CSV parsing
+        const lastNameIndex = headers.findIndex(h => h.toLowerCase().includes("last name") || h.toLowerCase() === "lastname");
+        const emailIndex = headers.findIndex(h => h.toLowerCase().includes("email"));
+        const listingIdIndex = headers.findIndex(h => h.toLowerCase().includes("listing id") || h.toLowerCase() === "listingid");
+        const numAppsIndex = headers.findIndex(h => h.toLowerCase().includes("num applications") || h.toLowerCase().includes("numapplications"));
+
+        if (lastNameIndex === -1 || emailIndex === -1 || listingIdIndex === -1 || numAppsIndex === -1) {
+          console.error("Missing headers:", { lastNameIndex, emailIndex, listingIdIndex, numAppsIndex, headers });
+          setError("Invalid CSV format. Expected headers: LastName, Email, ListingID, NumApplications");
+          return;
+        }
+
+        const parsedData = [];
+        for (let i = 1; i < lines.length; i++) {
+          const currentLine = lines[i].trim();
+          if (!currentLine) continue;
+
+          const values = currentLine.split(",");
+          const row = {
+            LastName: values[lastNameIndex]?.trim(),
+            Email: values[emailIndex]?.trim(),
+            ListingID: values[listingIdIndex]?.trim(),
+            NumApplications: values[numAppsIndex]?.trim()
           };
-        }).filter(item => item !== null);
+
+          if (row.LastName && row.Email && row.ListingID && row.NumApplications) {
+            parsedData.push(row);
+          } else {
+            console.warn("Skipping invalid row:", row, "Values:", values);
+          }
+        }
 
         if (parsedData.length === 0) {
           setError("No valid data found in CSV.");
           return;
         }
 
+        console.log("Parsed CSV Data:", parsedData);
         setError("");
         onUpload(parsedData);
       } catch (err) {
@@ -82,11 +195,10 @@ export default function CsvUploader({ onUpload, isProcessing }) {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-          isDragging
-            ? "border-blue-500 bg-blue-50"
-            : "border-gray-300 hover:border-gray-400"
-        } ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}
+        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${isDragging
+          ? "border-blue-500 bg-blue-50"
+          : "border-gray-300 hover:border-gray-400"
+          } ${isProcessing ? "opacity-50 pointer-events-none" : ""}`}
       >
         <div className="space-y-2">
           <p className="text-gray-600">

@@ -40,7 +40,7 @@ function generateSessionId()
 
 function generateEmail()
 {
-	return `dahlia.internal+${Date.now()}@gmail.com`;
+	return "dahlia.internal@gmail.com";
 }
 
 async function getPreferences(listingId)

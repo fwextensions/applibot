@@ -24,7 +24,7 @@ function generateSessionId() {
 }
 
 function generateEmail() {
-	return `dahlia.internal+${Date.now()}@gmail.com`;
+	return "dahlia.internal@gmail.com";
 }
 
 export async function getPreferences(listingId) {
@@ -47,9 +47,19 @@ export async function submitApplication(listingId, preferences, overrides = {}) 
 	const sessionId1 = generateSessionId();
 	const sessionId2 = generateSessionId();
 	const externalSessionId = `${sessionId1}-${sessionId2}`;
-	const email = overrides.email || generateEmail();
+
+	const baseEmail = overrides.email || generateEmail();
 	const firstName = faker.person.firstName();
 	const lastName = overrides.lastName || faker.person.lastName();
+
+	// Add first name as alias to email
+	const emailParts = baseEmail.split("@");
+	const email = emailParts.length === 2
+		? `${emailParts[0]}+${firstName}@${emailParts[1]}`
+		: baseEmail;
+
+	// Generate random DOB for applicant 21+ years old
+	const dob = faker.date.birthdate({ min: 21, max: 80, mode: "age" }).toISOString().split("T")[0];
 
 	const payload = {
 		locale: "en",
@@ -74,7 +84,7 @@ export async function submitApplication(listingId, preferences, overrides = {}) 
 				phone: null,
 				phoneType: null,
 				preferenceAddressMatch: "",
-				dob: "1990-01-01",
+				dob,
 				workInSf: false,
 				xCoordinate: -13627616.12366289,
 				yCoordinate: 4547681.551093868,

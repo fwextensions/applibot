@@ -4,20 +4,19 @@ export default function CreatedApplicationsList({ createdApps }) {
 	}
 
 	const handleExportCsv = () => {
-		const headers = ["First Name", "Last Name", "Email", "Application ID", "Listing ID", "Salesforce URL", "Response Time (s)"];
+		const headers = ["First Name", "Last Name", "Email", "Application ID", "Listing ID", "Salesforce URL", "Response Time (s)", "Target Count"];
 		const csvContent = [
 			headers.join(","),
-			...createdApps.map(app =>
-				[
-					app.firstName,
-					app.lastName,
-					app.email,
-					app.id,
-					app.listingId || "",
-					`https://sfhousing--full.sandbox.lightning.force.com/lightning/r/Application__c/${app.id}/view`,
-					app.responseTime ? (app.responseTime / 1000).toFixed(2) : "0.00"
-				].join(",")
-			)
+			...createdApps.map(app => [
+				app.firstName,
+				app.lastName,
+				app.email,
+				app.id,
+				app.listingId,
+				`https://sfhousing--full.sandbox.lightning.force.com/lightning/r/Application__c/${app.id}/view`,
+				app.responseTime.toFixed(2),
+				app.targetCount || 1
+			].join(","))
 		].join("\n");
 
 		const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -58,7 +57,7 @@ export default function CreatedApplicationsList({ createdApps }) {
 						</a>
 						<span className="text-gray-500">({app.email})</span>
 						{app.listingId && <span className="ml-2 text-xs text-gray-400">Listing: {app.listingId}</span>}
-						{app.responseTime && <span className="ml-2 text-xs text-gray-500">took {(app.responseTime / 1000).toFixed(2)}s</span>}
+						{app.responseTime && <span className="ml-2 text-xs text-gray-500">took {app.responseTime.toFixed(2)}s</span>}
 					</div>
 				))}
 			</div>

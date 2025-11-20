@@ -81,26 +81,33 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		}
 	}, [isGenerating, listingId, numApplications, currentListingId, showStatus]);
 
-	const processCsvData = useCallback(async (data) => {
+	const processCsvData = useCallback(async (csvData, existingApps = []) => {
+		console.log("Processing CSV Data:", csvData);
 		if (isGenerating) return;
 
 		setIsGenerating(true);
-		setCreatedApps([]);
+		showStatus("Starting batch generation...", "info");
+		setCreatedApps(existingApps);
 
 		let successCount = 0;
 		let failCount = 0;
-		const totalApps = data.reduce((acc, row) => acc + row.numApplications, 0);
 		let currentAppIndex = 0;
 
 		try {
 			// Group by listing ID to minimize preference fetches
 			const appsByListing = {};
-			data.forEach(row => {
-				if (!appsByListing[row.listingId]) {
-					appsByListing[row.listingId] = [];
+			csvData.forEach(row => {
+				if (!appsByListing[row.ListingID]) {
+					appsByListing[row.ListingID] = [];
 				}
-				appsByListing[row.listingId].push(row);
+				appsByListing[row.ListingID].push({
+					lastName: row.LastName,
+					email: row.Email,
+					numApplications: parseInt(row.NumApplications, 10) || 1
+				});
 			});
+
+			const totalApps = Object.values(appsByListing).reduce((acc, rows) => acc + rows.reduce((rAcc, r) => rAcc + r.numApplications, 0), 0);
 
 			for (const [listingId, rows] of Object.entries(appsByListing)) {
 				showStatus(`Fetching preferences for listing ${listingId}...`, "info");
@@ -128,7 +135,15 @@ export default function useApplicationGenerator(defaultListingId = "") {
 							});
 							const endTime = performance.now();
 							successCount++;
-							setCreatedApps((prev) => [...prev, { ...result.applicantDetails, responseTime: endTime - startTime }]);
+							const durationInSeconds = (endTime - startTime) / 1000;
+							setCreatedApps(prev => [
+								...prev,
+								{
+									...result.applicantDetails,
+									responseTime: durationInSeconds,
+									targetCount: row.numApplications
+								}
+							]);
 						} catch (error) {
 							failCount++;
 							console.error(`Application failed for ${row.email}:`, error);
