@@ -43,13 +43,13 @@ export async function getPreferences(listingId) {
 	}));
 }
 
-export async function submitApplication(listingId, preferences) {
+export async function submitApplication(listingId, preferences, overrides = {}) {
 	const sessionId1 = generateSessionId();
 	const sessionId2 = generateSessionId();
 	const externalSessionId = `${sessionId1}-${sessionId2}`;
-	const email = generateEmail();
+	const email = overrides.email || generateEmail();
 	const firstName = faker.person.firstName();
-	const lastName = faker.person.lastName();
+	const lastName = overrides.lastName || faker.person.lastName();
 
 	const payload = {
 		locale: "en",
@@ -142,7 +142,7 @@ export async function submitApplication(listingId, preferences) {
 
 	return {
 		...result,
-		applicantDetails: { firstName, lastName, email, id: result.id },
+		applicantDetails: { firstName, lastName, email, id: result.id, listingId },
 	};
 }
 

@@ -1,3 +1,4 @@
+import CsvUploader from "./components/CsvUploader";
 import CreatedApplicationsList from "./components/CreatedApplicationsList";
 import ListingForm from "./components/ListingForm";
 import StatusBanner from "./components/StatusBanner";
@@ -12,15 +13,27 @@ export default function App() {
     status,
     isGenerating,
     createdApps,
-    handleGenerateApplications
+    handleGenerateApplications,
+    processCsvData
   } = useApplicationGenerator();
 
   return (
     <main className="min-h-screen py-12 px-4">
       <section className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
         <h1 className="text-3xl font-bold text-gray-900 font-mono mb-12">
-          🤖 applibot <img src="https://housing.sfgov.org/assets/favicon-96x96-a0efa58fa4aecb817d51b35dad3b9ee0b60dbf4a9c6e63aeade28fcd68279181.png" alt="DAHLIA logo" className="inline-block w-[32px] h-[32px] mt-[-4px]"/>
+          🤖 applibot <img src="https://housing.sfgov.org/assets/favicon-96x96-a0efa58fa4aecb817d51b35dad3b9ee0b60dbf4a9c6e63aeade28fcd68279181.png" alt="DAHLIA logo" className="inline-block w-[32px] h-[32px] mt-[-4px]" />
         </h1>
+
+        <CsvUploader onUpload={processCsvData} isProcessing={isGenerating} />
+
+        <div className="relative my-8">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-2 bg-white text-gray-500">Or generate manually</span>
+          </div>
+        </div>
 
         <ListingForm
           listingId={listingId}
