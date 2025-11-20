@@ -96,6 +96,24 @@ export async function submitApplication(listingId, preferences, overrides = {}) 
 			householdVouchersSubsidies: false,
 			monthlyIncome: 4000,
 			totalMonthlyRent: 0,
+			alternateContact: Math.random() < 0.33 ? {
+				appMemberId: null,
+				alternateContactType: "Friend",
+				alternateContactTypeOther: "",
+				agency: "",
+				email: "dahlia.internal@gmail.com",
+				firstName: faker.person.firstName(),
+				lastName: faker.person.lastName(),
+				phone: faker.phone.number(),
+				address: "123 Main St",
+				city: "San Francisco",
+				state: "CA",
+				zip: "94105",
+				mailingAddress: "123 Main St",
+				mailingCity: "San Francisco",
+				mailingState: "CA",
+				mailingZip: "94105"
+			} : null,
 			formMetadata: JSON.stringify({
 				completedSections: {
 					Intro: true,
@@ -104,6 +122,7 @@ export async function submitApplication(listingId, preferences, overrides = {}) 
 					Household: true,
 					Income: true,
 					Preferences: false,
+					AlternateContact: true
 				},
 				session_uid: externalSessionId,
 				lastPage: "review-terms",
