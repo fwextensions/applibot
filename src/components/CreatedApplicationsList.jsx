@@ -57,7 +57,7 @@ export default function CreatedApplicationsList({ createdApps }) {
 						</a>
 						<span className="text-gray-500">({app.email})</span>
 						{app.listingId && <span className="ml-2 text-xs text-gray-400">Listing: {app.listingId}</span>}
-						{app.responseTime && <span className="ml-2 text-xs text-gray-500">took {app.responseTime.toFixed(2)}s</span>}
+						{app.responseTime && <span className="ml-2 text-xs text-gray-500"> took {app.responseTime.toFixed(2)}s</span>}
 					</div>
 				))}
 			</div>

@@ -61,6 +61,36 @@ export async function submitApplication(listingId, preferences, overrides = {}) 
 	// Generate random DOB for applicant 21+ years old
 	const dob = faker.date.birthdate({ min: 21, max: 80, mode: "age" }).toISOString().split("T")[0];
 
+	// Phone-only applicant logic (5% chance)
+	const isPhoneOnly = Math.random() < 0.05;
+
+	const primaryApplicant = {
+		email: isPhoneOnly ? "" : email,
+		firstName,
+		middleName: new Date().toISOString(),
+		lastName,
+		noPhone: !isPhoneOnly,
+		phone: isPhoneOnly ? faker.phone.number({ style: "national" }) : null,
+		phoneType: isPhoneOnly ? "Cell" : null,
+		preferenceAddressMatch: "",
+		dob,
+		workInSf: false,
+		xCoordinate: -13627616.12366289,
+		yCoordinate: 4547681.551093868,
+		whichComponentOfLocatorWasUsed: "eas_gc",
+		candidateScore: 100,
+		city: "SAN FRANCISCO",
+		state: "CA",
+		zip: "94103-1267",
+		address: "1 S VAN NESS AVE APT A",
+		mailingCity: "SAN FRANCISCO",
+		mailingState: "CA",
+		mailingZip: "94103-1267",
+		mailingAddress: "1 S VAN NESS AVE APT A",
+		isSFUSDEmployee: null,
+		jobClassification: null,
+	};
+
 	const payload = {
 		locale: "en",
 		uploaded_file: {
@@ -75,32 +105,7 @@ export async function submitApplication(listingId, preferences, overrides = {}) 
 			answeredCommunityScreening: null,
 			externalSessionId,
 			listingID: listingId,
-			primaryApplicant: {
-				email,
-				firstName,
-				middleName: new Date().toISOString(),
-				lastName,
-				noPhone: true,
-				phone: null,
-				phoneType: null,
-				preferenceAddressMatch: "",
-				dob,
-				workInSf: false,
-				xCoordinate: -13627616.12366289,
-				yCoordinate: 4547681.551093868,
-				whichComponentOfLocatorWasUsed: "eas_gc",
-				candidateScore: 100,
-				city: "SAN FRANCISCO",
-				state: "CA",
-				zip: "94103-1267",
-				address: "1 S VAN NESS AVE APT A",
-				mailingCity: "SAN FRANCISCO",
-				mailingState: "CA",
-				mailingZip: "94103-1267",
-				mailingAddress: "1 S VAN NESS AVE APT A",
-				isSFUSDEmployee: null,
-				jobClassification: null,
-			},
+			primaryApplicant,
 			adaPrioritiesSelected: "None;",
 			agreeToTerms: true,
 			householdVouchersSubsidies: false,
