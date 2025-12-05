@@ -116,7 +116,7 @@ export async function submitApplication(listingId, preferences, overrides = {}) 
 				alternateContactType: "Friend",
 				alternateContactTypeOther: "",
 				agency: "",
-				email: "dahlia.internal@gmail.com",
+				email: `dahlia.internal+${firstName}-${lastName}@gmail.com`,
 				firstName: faker.person.firstName(),
 				lastName: faker.person.lastName(),
 				phone: faker.phone.number(),
