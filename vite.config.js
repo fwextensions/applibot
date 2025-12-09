@@ -9,11 +9,17 @@ export default defineConfig({
 	],
 	server: {
 		proxy: {
-			"/api": {
+			"/api-full": {
 				target: "https://dahlia-full.herokuapp.com",
 				changeOrigin: true,
 				secure: true,
-				rewrite: (path) => path
+				rewrite: (path) => path.replace(/^\/api-full/, "/api")
+			},
+			"/api-prod": {
+				target: "https://housing.sfgov.org",
+				changeOrigin: true,
+				secure: true,
+				rewrite: (path) => path.replace(/^\/api-prod/, "/api")
 			}
 		}
 	}

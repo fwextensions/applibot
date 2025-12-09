@@ -1,6 +1,7 @@
 import CsvUploader from "./components/CsvUploader";
 import CreatedApplicationsList from "./components/CreatedApplicationsList";
 import ListingForm from "./components/ListingForm";
+import ServerSelector from "./components/ServerSelector";
 import StatusBanner from "./components/StatusBanner";
 import useApplicationGenerator from "./hooks/useApplicationGenerator";
 
@@ -14,7 +15,9 @@ export default function App() {
     isGenerating,
     createdApps,
     handleGenerateApplications,
-    processCsvData
+    processCsvData,
+    server,
+    setServer
   } = useApplicationGenerator();
 
   return (
@@ -23,6 +26,12 @@ export default function App() {
         <h1 className="text-3xl font-bold text-gray-900 font-mono mb-12">
           🤖 applibot <img src="https://housing.sfgov.org/assets/favicon-96x96-a0efa58fa4aecb817d51b35dad3b9ee0b60dbf4a9c6e63aeade28fcd68279181.png" alt="DAHLIA logo" className="inline-block w-[32px] h-[32px] mt-[-4px]" />
         </h1>
+
+        <ServerSelector
+          server={server}
+          onServerChange={setServer}
+          disabled={isGenerating}
+        />
 
         <CsvUploader onUpload={processCsvData} isProcessing={isGenerating} />
 

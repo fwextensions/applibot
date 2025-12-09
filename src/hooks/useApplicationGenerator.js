@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { getPreferences, submitApplication } from "../services/applications";
+import { getPreferences, submitApplication, DEFAULT_SERVER } from "../services/applications";
 
 export default function useApplicationGenerator(defaultListingId = "") {
 	const [listingId, setListingId] = useState(defaultListingId);
@@ -8,6 +8,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 	const [status, setStatus] = useState({ message: "", type: "" });
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [createdApps, setCreatedApps] = useState([]);
+	const [server, setServer] = useState(DEFAULT_SERVER);
 
 	const showStatus = useCallback((message, type) => {
 		setStatus({ message, type });
@@ -37,7 +38,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 		try {
 			showStatus("Fetching preferences...", "info");
-			const preferences = await getPreferences(listingId);
+			const preferences = await getPreferences(listingId, server);
 
 			if (preferences.length === 0) {
 				showStatus("No preferences found for this listing", "error");
@@ -52,7 +53,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			for (let index = 0; index < numApplications; index += 1) {
 				try {
 					const startTime = performance.now();
-					const result = await submitApplication(listingId, preferences);
+					const result = await submitApplication(listingId, preferences, {}, server);
 					const endTime = performance.now();
 					successCount += 1;
 
@@ -79,7 +80,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		} finally {
 			setIsGenerating(false);
 		}
-	}, [isGenerating, listingId, numApplications, currentListingId, showStatus]);
+	}, [isGenerating, listingId, numApplications, currentListingId, showStatus, server]);
 
 	const processCsvData = useCallback(async (csvData, existingApps = []) => {
 		console.log("Processing CSV Data:", csvData);
@@ -113,7 +114,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				showStatus(`Fetching preferences for listing ${listingId}...`, "info");
 				let preferences;
 				try {
-					preferences = await getPreferences(listingId);
+					preferences = await getPreferences(listingId, server);
 				} catch (error) {
 					console.error(`Failed to fetch preferences for ${listingId}:`, error);
 					// Fail all apps for this listing
@@ -132,7 +133,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 							const result = await submitApplication(listingId, preferences, {
 								lastName: row.lastName,
 								email: row.email
-							});
+							}, server);
 							const endTime = performance.now();
 							successCount++;
 							const durationInSeconds = (endTime - startTime) / 1000;
@@ -168,7 +169,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		} finally {
 			setIsGenerating(false);
 		}
-	}, [isGenerating, showStatus]);
+	}, [isGenerating, showStatus, server]);
 
 	return {
 		listingId,
@@ -179,6 +180,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		isGenerating,
 		createdApps,
 		handleGenerateApplications,
-		processCsvData
+		processCsvData,
+		server,
+		setServer
 	};
 }

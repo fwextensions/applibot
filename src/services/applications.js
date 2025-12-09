@@ -1,5 +1,12 @@
 import { faker } from "@faker-js/faker";
 
+export const SERVERS = {
+	full: { name: "Full (Testing)", apiPath: "/api-full" },
+	prod: { name: "Production", apiPath: "/api-prod" },
+};
+
+export const DEFAULT_SERVER = "full";
+
 const PREFERENCE_NAME_MAP = {
 	"Veteran with Certificate of Preference (V-COP)": "V-COP",
 	"Certificate of Preference (COP)": "COP",
@@ -27,8 +34,9 @@ function generateEmail() {
 	return "dahlia.internal@gmail.com";
 }
 
-export async function getPreferences(listingId) {
-	const response = await fetch(`/api/v1/listings/${listingId}/preferences`);
+export async function getPreferences(listingId, server = DEFAULT_SERVER) {
+	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
+	const response = await fetch(`${apiPath}/v1/listings/${listingId}/preferences`);
 
 	if (!response.ok) {
 		throw new Error(`Failed to fetch preferences: ${response.status}`);
@@ -43,7 +51,7 @@ export async function getPreferences(listingId) {
 	}));
 }
 
-export async function submitApplication(listingId, preferences, overrides = {}) {
+export async function submitApplication(listingId, preferences, overrides = {}, server = DEFAULT_SERVER) {
 	const sessionId1 = generateSessionId();
 	const sessionId2 = generateSessionId();
 	const externalSessionId = `${sessionId1}-${sessionId2}`;
@@ -159,7 +167,8 @@ export async function submitApplication(listingId, preferences, overrides = {}) 
 		},
 	};
 
-	const response = await fetch("/api/v1/short-form/application", {
+	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
+	const response = await fetch(`${apiPath}/v1/short-form/application`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",
