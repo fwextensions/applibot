@@ -9,6 +9,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 	const [isGenerating, setIsGenerating] = useState(false);
 	const [createdApps, setCreatedApps] = useState([]);
 	const [server, setServer] = useState(DEFAULT_SERVER);
+	const [altContactPercent, setAltContactPercent] = useState(33);
+	const [noEmailPercent, setNoEmailPercent] = useState(5);
 
 	const showStatus = useCallback((message, type) => {
 		setStatus({ message, type });
@@ -53,7 +55,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			for (let index = 0; index < numApplications; index += 1) {
 				try {
 					const startTime = performance.now();
-					const result = await submitApplication(listingId, preferences, {}, server);
+					const result = await submitApplication(listingId, preferences, { altContactPercent, noEmailPercent }, server);
 					const endTime = performance.now();
 					successCount += 1;
 
@@ -80,7 +82,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		} finally {
 			setIsGenerating(false);
 		}
-	}, [isGenerating, listingId, numApplications, currentListingId, showStatus, server]);
+	}, [isGenerating, listingId, numApplications, currentListingId, showStatus, server, altContactPercent, noEmailPercent]);
 
 	const processCsvData = useCallback(async (csvData, existingApps = []) => {
 		console.log("Processing CSV Data:", csvData);
@@ -132,7 +134,9 @@ export default function useApplicationGenerator(defaultListingId = "") {
 							const startTime = performance.now();
 							const result = await submitApplication(listingId, preferences, {
 								lastName: row.lastName,
-								email: row.email
+								email: row.email,
+								altContactPercent,
+								noEmailPercent
 							}, server);
 							const endTime = performance.now();
 							successCount++;
@@ -169,7 +173,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		} finally {
 			setIsGenerating(false);
 		}
-	}, [isGenerating, showStatus, server]);
+	}, [isGenerating, showStatus, server, altContactPercent, noEmailPercent]);
 
 	return {
 		listingId,
@@ -182,6 +186,10 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		handleGenerateApplications,
 		processCsvData,
 		server,
-		setServer
+		setServer,
+		altContactPercent,
+		setAltContactPercent,
+		noEmailPercent,
+		setNoEmailPercent
 	};
 }

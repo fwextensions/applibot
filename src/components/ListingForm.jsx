@@ -3,6 +3,10 @@ export default function ListingForm({
 	onListingIdChange,
 	numApplications,
 	onNumApplicationsChange,
+	altContactPercent,
+	onAltContactPercentChange,
+	noEmailPercent,
+	onNoEmailPercentChange,
 	isGenerating,
 	onSubmit,
 }) {
@@ -35,6 +39,37 @@ export default function ListingForm({
 					max="100"
 					className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
 				/>
+			</div>
+
+			<div className="grid grid-cols-2 gap-4">
+				<div>
+					<label htmlFor="altContactPercent" className="block text-sm font-semibold text-gray-700 mb-2">
+						Alt Contact %
+					</label>
+					<input
+						type="number"
+						id="altContactPercent"
+						value={altContactPercent}
+						onChange={onAltContactPercentChange}
+						min="0"
+						max="100"
+						className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+					/>
+				</div>
+				<div>
+					<label htmlFor="noEmailPercent" className="block text-sm font-semibold text-gray-700 mb-2">
+						No Email %
+					</label>
+					<input
+						type="number"
+						id="noEmailPercent"
+						value={noEmailPercent}
+						onChange={onNoEmailPercentChange}
+						min="0"
+						max="100"
+						className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+					/>
+				</div>
 			</div>
 
 			<button

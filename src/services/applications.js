@@ -52,6 +52,10 @@ export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 }
 
 export async function submitApplication(listingId, preferences, overrides = {}, server = DEFAULT_SERVER) {
+	// Get percentages from overrides or use defaults
+	const altContactPercent = overrides.altContactPercent ?? 33;
+	const noEmailPercent = overrides.noEmailPercent ?? 5;
+
 	const sessionId1 = generateSessionId();
 	const sessionId2 = generateSessionId();
 	const externalSessionId = `${sessionId1}-${sessionId2}`;
@@ -69,8 +73,8 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 	// Generate random DOB for applicant 21+ years old
 	const dob = faker.date.birthdate({ min: 21, max: 80, mode: "age" }).toISOString().split("T")[0];
 
-	// Phone-only applicant logic (5% chance)
-	const isPhoneOnly = Math.random() < 0.05;
+	// Phone-only applicant logic (configurable percentage)
+	const isPhoneOnly = Math.random() < (noEmailPercent / 100);
 
 	const primaryApplicant = {
 		email: isPhoneOnly ? "" : email,
@@ -119,7 +123,7 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 			householdVouchersSubsidies: false,
 			monthlyIncome: 4000,
 			totalMonthlyRent: 0,
-			alternateContact: Math.random() < 0.33 ? {
+			alternateContact: Math.random() < (altContactPercent / 100) ? {
 				appMemberId: null,
 				alternateContactType: "Friend",
 				alternateContactTypeOther: "",

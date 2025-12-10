@@ -17,7 +17,11 @@ export default function App() {
     handleGenerateApplications,
     processCsvData,
     server,
-    setServer
+    setServer,
+    altContactPercent,
+    setAltContactPercent,
+    noEmailPercent,
+    setNoEmailPercent
   } = useApplicationGenerator();
 
   return (
@@ -49,6 +53,10 @@ export default function App() {
           onListingIdChange={(event) => setListingId(event.target.value)}
           numApplications={numApplications}
           onNumApplicationsChange={(event) => setNumApplications(parseInt(event.target.value))}
+          altContactPercent={altContactPercent}
+          onAltContactPercentChange={(event) => setAltContactPercent(parseInt(event.target.value) || 0)}
+          noEmailPercent={noEmailPercent}
+          onNoEmailPercentChange={(event) => setNoEmailPercent(parseInt(event.target.value) || 0)}
           isGenerating={isGenerating}
           onSubmit={handleGenerateApplications}
         />
