@@ -44,6 +44,10 @@ export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 
 	const data = await response.json();
 
+	if (!data.preferences || data.preferences.length === 0) {
+		throw new Error(`Listing ${listingId} not found on this server`);
+	}
+
 	return data.preferences.map((preference) => ({
 		listingPreferenceID: preference.listingPreferenceID,
 		preferenceName: preference.preferenceName,

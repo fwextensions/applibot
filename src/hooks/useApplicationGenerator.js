@@ -94,6 +94,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 		let successCount = 0;
 		let failCount = 0;
+		let skippedCount = 0;
 		let currentAppIndex = 0;
 
 		try {
@@ -119,11 +120,18 @@ export default function useApplicationGenerator(defaultListingId = "") {
 					preferences = await getPreferences(listingId, server);
 				} catch (error) {
 					console.error(`Failed to fetch preferences for ${listingId}:`, error);
-					// Fail all apps for this listing
 					const listingAppsCount = rows.reduce((acc, r) => acc + r.numApplications, 0);
-					failCount += listingAppsCount;
 					currentAppIndex += listingAppsCount;
-					showStatus(`Failed to fetch preferences for listing ${listingId}. Skipping ${listingAppsCount} apps.`, "error");
+
+					// check if it's a "listing not found" error vs other errors
+					if (error.message.includes("not found")) {
+						skippedCount += listingAppsCount;
+						showStatus(`Listing ${listingId} not found on this server. Skipped ${listingAppsCount} apps.`, "warning");
+					} else {
+						failCount += listingAppsCount;
+						showStatus(`Failed to fetch preferences for listing ${listingId}. Skipping ${listingAppsCount} apps.`,
+							"error");
+					}
 					continue;
 				}
 
@@ -161,7 +169,9 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				}
 			}
 
-			if (failCount === 0) {
+			if (successCount === 0 && failCount === 0) {
+				showStatus("No applications were generated. Check that listing IDs exist on this server.", "warning");
+			} else if (failCount === 0) {
 				showStatus(`✓ Successfully generated ${successCount} application(s)!`, "success");
 			} else {
 				showStatus(`Completed: ${successCount} successful, ${failCount} failed`, successCount > 0 ? "info" : "error");

@@ -135,9 +135,9 @@ export default function CsvUploader({ onUpload, isProcessing }) {
         const listingIdIndex = headers.findIndex(h => h.toLowerCase().includes("listing id") || h.toLowerCase() === "listingid");
         const numAppsIndex = headers.findIndex(h => h.toLowerCase().includes("num applications") || h.toLowerCase().includes("numapplications"));
 
-        if (lastNameIndex === -1 || emailIndex === -1 || listingIdIndex === -1 || numAppsIndex === -1) {
+        if (emailIndex === -1 || listingIdIndex === -1 || numAppsIndex === -1) {
           console.error("Missing headers:", { lastNameIndex, emailIndex, listingIdIndex, numAppsIndex, headers });
-          setError("Invalid CSV format. Expected headers: LastName, Email, ListingID, NumApplications");
+          setError("Invalid CSV format. Expected headers: Email, ListingID, NumApplications (LastName optional)");
           return;
         }
 
@@ -147,14 +147,19 @@ export default function CsvUploader({ onUpload, isProcessing }) {
           if (!currentLine) continue;
 
           const values = currentLine.split(",");
+          const lastName = lastNameIndex !== -1 ? values[lastNameIndex]?.trim() : "";
           const row = {
-            LastName: values[lastNameIndex]?.trim(),
             Email: values[emailIndex]?.trim(),
             ListingID: values[listingIdIndex]?.trim(),
             NumApplications: values[numAppsIndex]?.trim()
           };
 
-          if (row.LastName && row.Email && row.ListingID && row.NumApplications) {
+          // only include LastName if it has a value
+          if (lastName) {
+            row.LastName = lastName;
+          }
+
+          if (row.Email && row.ListingID && row.NumApplications) {
             parsedData.push(row);
           } else {
             console.warn("Skipping invalid row:", row, "Values:", values);
@@ -215,7 +220,7 @@ export default function CsvUploader({ onUpload, isProcessing }) {
             </label>
           </p>
           <p className="text-xs text-gray-500">
-            Format: LastName, Email, ListingID, NumApplications
+            Format: Email, ListingID, NumApplications (LastName optional)
           </p>
         </div>
       </div>
