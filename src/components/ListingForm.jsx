@@ -1,6 +1,4 @@
 export default function ListingForm({
-	listingId,
-	onListingIdChange,
 	numApplications,
 	onNumApplicationsChange,
 	altContactPercent,
@@ -12,20 +10,6 @@ export default function ListingForm({
 }) {
 	return (
 		<div className="space-y-6">
-			<div>
-				<label htmlFor="listingId" className="block text-sm font-semibold text-gray-700 mb-2">
-					Listing ID
-				</label>
-				<input
-					type="text"
-					id="listingId"
-					value={listingId}
-					onChange={onListingIdChange}
-					placeholder="e.g., a0Wbb000001JZxZEAW"
-					className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-				/>
-			</div>
-
 			<div>
 				<label htmlFor="numApplications" className="block text-sm font-semibold text-gray-700 mb-2">
 					Number of Applications

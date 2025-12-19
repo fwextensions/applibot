@@ -1,6 +1,7 @@
 import CsvUploader from "./components/CsvUploader";
 import CreatedApplicationsList from "./components/CreatedApplicationsList";
 import ListingForm from "./components/ListingForm";
+import ListingPicker from "./components/ListingPicker";
 import ServerSelector from "./components/ServerSelector";
 import StatusBanner from "./components/StatusBanner";
 import useApplicationGenerator from "./hooks/useApplicationGenerator";
@@ -48,9 +49,14 @@ export default function App() {
           </div>
         </div>
 
+        <ListingPicker
+          server={server}
+          selectedListingId={listingId}
+          onListingChange={setListingId}
+          disabled={isGenerating}
+        />
+
         <ListingForm
-          listingId={listingId}
-          onListingIdChange={(event) => setListingId(event.target.value)}
           numApplications={numApplications}
           onNumApplicationsChange={(event) => setNumApplications(parseInt(event.target.value))}
           altContactPercent={altContactPercent}
