@@ -34,15 +34,33 @@ function generateEmail() {
 	return "dahlia.internal@gmail.com";
 }
 
+export async function getLotteryBuckets(listingId, server = DEFAULT_SERVER) {
+	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
+	const response = await fetch(`${apiPath}/v1/listings/${listingId}/lottery_buckets`);
+	if (!response.ok) return {};
+	const data = await response.json();
+	// Build a map of preferenceName -> preferenceShortCode
+	const map = {};
+	for (const bucket of data.lotteryBuckets || []) {
+		if (bucket.preferenceName && bucket.preferenceShortCode) {
+			map[bucket.preferenceName] = bucket.preferenceShortCode;
+		}
+	}
+	return map;
+}
+
 export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
-	const response = await fetch(`${apiPath}/v1/listings/${listingId}/preferences`);
+	const [prefsResponse, shortCodeMap] = await Promise.all([
+		fetch(`${apiPath}/v1/listings/${listingId}/preferences`),
+		getLotteryBuckets(listingId, server),
+	]);
 
-	if (!response.ok) {
-		throw new Error(`Failed to fetch preferences: ${response.status}`);
+	if (!prefsResponse.ok) {
+		throw new Error(`Failed to fetch preferences: ${prefsResponse.status}`);
 	}
 
-	const data = await response.json();
+	const data = await prefsResponse.json();
 
 	if (!data.preferences || data.preferences.length === 0) {
 		throw new Error(`Listing ${listingId} not found on this server`);
@@ -51,7 +69,8 @@ export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 	return data.preferences.map((preference) => ({
 		listingPreferenceID: preference.listingPreferenceID,
 		preferenceName: preference.preferenceName,
-		devName: getDevNameFromPreferenceName(preference.preferenceName),
+		// Use shortCode from lottery_buckets if available, fall back to hardcoded map
+		devName: shortCodeMap[preference.preferenceName] || getDevNameFromPreferenceName(preference.preferenceName),
 	}));
 }
 
@@ -165,7 +184,9 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 					listingPreferenceID: preference.listingPreferenceID,
 				};
 
-				if (preference.devName === "L_W" || preference.devName === "V-L_W") {
+				// Handle L_W variants (including tiered, e.g. T1-L_W, T1-V-L_W)
+				if (preference.devName === "L_W" || preference.devName === "V-L_W" ||
+					preference.devName === "T1-L_W" || preference.devName === "T1-V-L_W") {
 					normalizedPreference.individualPreference = "Live in SF";
 					normalizedPreference.optOut = true;
 				}
