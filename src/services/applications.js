@@ -103,6 +103,55 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 	};
 }
 
+const LW_DEV_NAMES = new Set(["L_W", "V-L_W", "T1-L_W", "T1-V-L_W"]);
+
+// When a preference is claimed, these additional devNames are also automatically claimed.
+// Veteran prefs imply their non-veteran counterparts; neighborhood/displaced prefs imply L_W.
+const PREFERENCE_IMPLICATIONS = {
+	"V-COP":    ["COP"],
+	"V-DTHP":   ["DTHP", "V-L_W", "L_W"],
+	"DTHP":     ["L_W"],
+	"V-NRHP":   ["NRHP", "V-L_W", "L_W"],
+	"NRHP":     ["L_W"],
+	"V-L_W":    ["L_W"],
+	"T1-V-L_W": ["T1-L_W"],
+	"T1-V-NRHP":["T1-NRHP", "T1-V-L_W", "T1-L_W"],
+	"T1-NRHP":  ["T1-L_W"],
+};
+
+/**
+ * Builds shortFormPreferences where one preference is claimed (opted in) and the rest are opted out.
+ * Claiming a preference also opts in any implied preferences (e.g. NRHP implies L_W).
+ * @param {Array} preferences - All preferences for the listing
+ * @param {number} claimedIndex - Index of the preference to claim; -1 means no preference claimed
+ */
+export function buildShortFormPreferences(preferences, claimedIndex = undefined) {
+	// If not specified, randomly pick one preference to claim (or -1 = no preference)
+	const resolvedIndex = claimedIndex !== undefined
+		? claimedIndex
+		: Math.floor(Math.random() * (preferences.length + 1)) - 1;
+
+	const claimedDevName = resolvedIndex >= 0 ? preferences[resolvedIndex]?.devName : null;
+	const claimedSet = new Set(
+		claimedDevName
+			? [claimedDevName, ...(PREFERENCE_IMPLICATIONS[claimedDevName] || [])]
+			: []
+	);
+
+	return preferences.map((preference) => {
+		const isLW = LW_DEV_NAMES.has(preference.devName);
+		const pref = {
+			recordTypeDevName: preference.devName,
+			listingPreferenceID: preference.listingPreferenceID,
+		};
+		if (isLW) {
+			pref.individualPreference = "Live in SF";
+		}
+		pref.optOut = !claimedSet.has(preference.devName);
+		return pref;
+	});
+}
+
 export function buildApplicationPayload(listingId, preferences, overrides = {}) {
 	const altContactPercent = overrides.altContactPercent ?? 33;
 	const noEmailPercent = overrides.noEmailPercent ?? 5;
@@ -200,18 +249,7 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 				lastPage: "review-terms",
 				groupedHouseholdAddresses: [],
 			}),
-			shortFormPreferences: preferences.map((preference) => {
-				const normalizedPreference = {
-					recordTypeDevName: preference.devName,
-					listingPreferenceID: preference.listingPreferenceID,
-				};
-				if (preference.devName === "L_W" || preference.devName === "V-L_W" ||
-					preference.devName === "T1-L_W" || preference.devName === "T1-V-L_W") {
-					normalizedPreference.individualPreference = "Live in SF";
-					normalizedPreference.optOut = true;
-				}
-				return normalizedPreference;
-			}),
+			shortFormPreferences: buildShortFormPreferences(preferences, overrides.claimedPreferenceIndex),
 		},
 	};
 

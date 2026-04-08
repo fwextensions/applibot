@@ -213,17 +213,22 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			const rows = [];
 			for (let i = 0; i < numApplications; i++) {
 				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent });
+				const claimedPrefs = payload.application.shortFormPreferences
+					.filter(p => !p.optOut)
+					.map(p => p.recordTypeDevName)
+					.join("; ");
 				rows.push({
 					firstName: applicantDetails.firstName,
 					lastName: applicantDetails.lastName,
 					email: applicantDetails.email,
 					dob: payload.application.primaryApplicant.dob,
 					listingId,
+					claimedPreferences: claimedPrefs || "none",
 					payload: JSON.stringify(payload),
 				});
 			}
 
-			const headers = ["firstName", "lastName", "email", "dob", "listingId", "payload"];
+			const headers = ["firstName", "lastName", "email", "dob", "listingId", "claimedPreferences", "payload"];
 			const csvContent = [
 				headers.join(","),
 				...rows.map(row =>
