@@ -7,6 +7,11 @@ export const SERVERS = {
 
 export const DEFAULT_SERVER = "full";
 
+// Valid Salesforce record type dev names. Anything not in this set must use "Custom".
+const VALID_RECORD_TYPES = new Set([
+	"COP", "V-COP", "DTHP", "V-DTHP", "NRHP", "V-NRHP", "L_W", "V-L_W",
+]);
+
 const PREFERENCE_NAME_MAP = {
 	"Veteran with Certificate of Preference (V-COP)": "V-COP",
 	"Certificate of Preference (COP)": "COP",
@@ -19,7 +24,7 @@ const PREFERENCE_NAME_MAP = {
 };
 
 function getDevNameFromPreferenceName(preferenceName) {
-	return PREFERENCE_NAME_MAP[preferenceName] || "L_W";
+	return PREFERENCE_NAME_MAP[preferenceName] || "Custom";
 }
 
 function generateSessionId() {
@@ -51,10 +56,7 @@ export async function getLotteryBuckets(listingId, server = DEFAULT_SERVER) {
 
 export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
-	const [prefsResponse, shortCodeMap] = await Promise.all([
-		fetch(`${apiPath}/v1/listings/${listingId}/preferences`),
-		getLotteryBuckets(listingId, server),
-	]);
+	const prefsResponse = await fetch(`${apiPath}/v1/listings/${listingId}/preferences`);
 
 	if (!prefsResponse.ok) {
 		throw new Error(`Failed to fetch preferences: ${prefsResponse.status}`);
@@ -69,8 +71,7 @@ export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 	return data.preferences.map((preference) => ({
 		listingPreferenceID: preference.listingPreferenceID,
 		preferenceName: preference.preferenceName,
-		// Use shortCode from lottery_buckets if available, fall back to hardcoded map
-		devName: shortCodeMap[preference.preferenceName] || getDevNameFromPreferenceName(preference.preferenceName),
+		devName: getDevNameFromPreferenceName(preference.preferenceName),
 	}));
 }
 
@@ -140,6 +141,7 @@ export function buildShortFormPreferences(preferences, claimedIndex = undefined)
 
 	return preferences.map((preference) => {
 		const isLW = LW_DEV_NAMES.has(preference.devName);
+		const isCustom = preference.devName === "Custom";
 		const pref = {
 			recordTypeDevName: preference.devName,
 			listingPreferenceID: preference.listingPreferenceID,
@@ -147,7 +149,10 @@ export function buildShortFormPreferences(preferences, claimedIndex = undefined)
 		if (isLW) {
 			pref.individualPreference = "Live in SF";
 		}
-		pref.optOut = !claimedSet.has(preference.devName);
+		// Custom preferences don't use optOut; standard preferences do
+		if (!isCustom) {
+			pref.optOut = !claimedSet.has(preference.devName);
+		}
 		return pref;
 	});
 }
