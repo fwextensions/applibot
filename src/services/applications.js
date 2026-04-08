@@ -1,8 +1,8 @@
 import { faker } from "@faker-js/faker";
 
 export const SERVERS = {
-	full: { name: "Full (Testing)", apiPath: "/api-full" },
-	prod: { name: "Production", apiPath: "/api-prod" },
+	full: { name: "Full (Testing)", apiPath: "/api-full", baseUrl: "https://dahlia-full.herokuapp.com" },
+	prod: { name: "Production", apiPath: "/api-prod", baseUrl: "https://housing.sfgov.org" },
 };
 
 export const DEFAULT_SERVER = "full";
