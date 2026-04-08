@@ -215,7 +215,7 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 			adaPrioritiesSelected: "None;",
 			agreeToTerms: true,
 			householdVouchersSubsidies: false,
-			monthlyIncome: 4000,
+			monthlyIncome: 6000,
 			totalMonthlyRent: 0,
 			alternateContact: Math.random() < (altContactPercent / 100) ? {
 				appMemberId: null,
