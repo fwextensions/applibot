@@ -79,6 +79,34 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 	const altContactPercent = overrides.altContactPercent ?? 33;
 	const noEmailPercent = overrides.noEmailPercent ?? 5;
 
+	const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent, ...overrides });
+
+	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
+	const response = await fetch(`${apiPath}/v1/short-form/application`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(payload),
+	});
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`HTTP ${response.status}: ${errorText}`);
+	}
+
+	const result = await response.json();
+
+	return {
+		...result,
+		applicantDetails: { ...applicantDetails, id: result.id, listingId },
+	};
+}
+
+export function buildApplicationPayload(listingId, preferences, overrides = {}) {
+	const altContactPercent = overrides.altContactPercent ?? 33;
+	const noEmailPercent = overrides.noEmailPercent ?? 5;
+
 	const sessionId1 = generateSessionId();
 	const sessionId2 = generateSessionId();
 	const externalSessionId = `${sessionId1}-${sessionId2}`;
@@ -87,16 +115,12 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 	const firstName = faker.person.firstName();
 	const lastName = overrides.lastName || faker.person.lastName();
 
-	// Add first name as alias to email
 	const emailParts = baseEmail.split("@");
 	const email = emailParts.length === 2
 		? `${emailParts[0]}+${firstName}@${emailParts[1]}`
 		: baseEmail;
 
-	// Generate random DOB for applicant 21+ years old
 	const dob = faker.date.birthdate({ min: 21, max: 80, mode: "age" }).toISOString().split("T")[0];
-
-	// Phone-only applicant logic (configurable percentage)
 	const isPhoneOnly = Math.random() < (noEmailPercent / 100);
 
 	const primaryApplicant = {
@@ -128,9 +152,7 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 
 	const payload = {
 		locale: "en",
-		uploaded_file: {
-			session_uid: externalSessionId,
-		},
+		uploaded_file: { session_uid: externalSessionId },
 		application: {
 			id: null,
 			applicationLanguage: "English",
@@ -183,39 +205,17 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 					recordTypeDevName: preference.devName,
 					listingPreferenceID: preference.listingPreferenceID,
 				};
-
-				// Handle L_W variants (including tiered, e.g. T1-L_W, T1-V-L_W)
 				if (preference.devName === "L_W" || preference.devName === "V-L_W" ||
 					preference.devName === "T1-L_W" || preference.devName === "T1-V-L_W") {
 					normalizedPreference.individualPreference = "Live in SF";
 					normalizedPreference.optOut = true;
 				}
-
 				return normalizedPreference;
 			}),
 		},
 	};
 
-	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
-	const response = await fetch(`${apiPath}/v1/short-form/application`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify(payload),
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`HTTP ${response.status}: ${errorText}`);
-	}
-
-	const result = await response.json();
-
-	return {
-		...result,
-		applicantDetails: { firstName, lastName, email, id: result.id, listingId },
-	};
+	return { payload, applicantDetails: { firstName, lastName, email, listingId } };
 }
 
 export { getDevNameFromPreferenceName, generateEmail, generateSessionId };

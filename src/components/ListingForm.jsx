@@ -7,6 +7,7 @@ export default function ListingForm({
 	onNoEmailPercentChange,
 	isGenerating,
 	onSubmit,
+	onExportCsv,
 }) {
 	return (
 		<div className="space-y-6">
@@ -62,6 +63,13 @@ export default function ListingForm({
 				className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.02] active:scale-[0.98]"
 			>
 				{isGenerating ? "Generating..." : "Generate Applications"}
+			</button>
+			<button
+				onClick={onExportCsv}
+				disabled={isGenerating}
+				className="w-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out"
+			>
+				{isGenerating ? "Generating..." : "Save as CSV (dry run)"}
 			</button>
 		</div>
 	);

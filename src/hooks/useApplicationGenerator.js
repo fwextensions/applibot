@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { getPreferences, submitApplication, DEFAULT_SERVER } from "../services/applications";
+import { getPreferences, submitApplication, buildApplicationPayload, DEFAULT_SERVER } from "../services/applications";
 
 export default function useApplicationGenerator(defaultListingId = "") {
 	const [listingId, setListingId] = useState(defaultListingId);
@@ -185,6 +185,69 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		}
 	}, [isGenerating, showStatus, server, altContactPercent, noEmailPercent]);
 
+	const handleExportCsv = useCallback(async () => {
+		if (isGenerating) return;
+
+		if (!listingId.trim()) {
+			showStatus("Please enter a listing ID", "error");
+			return;
+		}
+
+		if (!numApplications || numApplications < 1) {
+			showStatus("Please enter a valid number of applications", "error");
+			return;
+		}
+
+		setIsGenerating(true);
+		try {
+			showStatus("Fetching preferences...", "info");
+			const preferences = await getPreferences(listingId, server);
+
+			if (preferences.length === 0) {
+				showStatus("No preferences found for this listing", "error");
+				return;
+			}
+
+			showStatus(`Building ${numApplications} application(s)...`, "info");
+
+			const rows = [];
+			for (let i = 0; i < numApplications; i++) {
+				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent });
+				rows.push({
+					firstName: applicantDetails.firstName,
+					lastName: applicantDetails.lastName,
+					email: applicantDetails.email,
+					dob: payload.application.primaryApplicant.dob,
+					listingId,
+					payload: JSON.stringify(payload),
+				});
+			}
+
+			const headers = ["firstName", "lastName", "email", "dob", "listingId", "payload"];
+			const csvContent = [
+				headers.join(","),
+				...rows.map(row =>
+					headers.map(h => `"${String(row[h]).replace(/"/g, '""')}"`).join(",")
+				),
+			].join("\n");
+
+			const blob = new Blob([csvContent], { type: "text/csv" });
+			const url = URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `applications-dry-run-${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+			a.click();
+			URL.revokeObjectURL(url);
+
+			showStatus(`✓ Exported ${numApplications} application(s) to CSV`, "success");
+		} catch (error) {
+			showStatus(`Error: ${error.message}`, "error");
+			console.error(error);
+		} finally {
+			setIsGenerating(false);
+		}
+	}, [isGenerating, listingId, numApplications, server, altContactPercent, noEmailPercent, showStatus]);
+
 	return {
 		listingId,
 		setListingId,
@@ -195,6 +258,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		createdApps,
 		handleGenerateApplications,
 		processCsvData,
+		handleExportCsv,
 		server,
 		setServer,
 		altContactPercent,

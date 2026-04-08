@@ -17,6 +17,7 @@ export default function App() {
     createdApps,
     handleGenerateApplications,
     processCsvData,
+    handleExportCsv,
     server,
     setServer,
     altContactPercent,
@@ -65,6 +66,7 @@ export default function App() {
           onNoEmailPercentChange={(event) => setNoEmailPercent(parseInt(event.target.value) || 0)}
           isGenerating={isGenerating}
           onSubmit={handleGenerateApplications}
+          onExportCsv={handleExportCsv}
         />
 
         <StatusBanner status={status} />
