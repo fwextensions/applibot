@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { fetchListings, filterPreLotteryListings } from '../services/listings';
+import { SERVERS } from '../services/applications';
 
 /**
  * ListingPicker component - allows users to select from available pre-lottery listings
@@ -159,6 +160,8 @@ export default function ListingPicker({
     );
   }
 
+  const listingURL = `${SERVERS[server]?.baseUrl}/listings/${selectedListingId}`;
+
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between mb-2">
@@ -169,7 +172,7 @@ export default function ListingPicker({
           type="button"
           onClick={handleModeToggle}
           disabled={disabled}
-          className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+          className="px-4 py-2 rounded-md text-sm font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {mode === 'picker' ? 'Enter ID manually' : 'Select from list'}
         </button>
@@ -206,6 +209,17 @@ export default function ListingPicker({
           placeholder="e.g., a0Wbb000001JZxZEAW"
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
         />
+      )}
+      {selectedListingId && (
+        <a
+          href={listingURL}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={listingURL}
+          className="block px-4 py-2 text-sm text-gray-400 hover:text-blue-600 transition-colors"
+        >
+          {selectedListingId}
+        </a>
       )}
     </div>
   );

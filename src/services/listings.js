@@ -23,5 +23,7 @@ export async function fetchListings(server = DEFAULT_SERVER) {
  * @returns {Array} Filtered array containing only listings where Lottery_Status === "Not Yet Run"
  */
 export function filterPreLotteryListings(listings) {
-  return listings.filter(listing => listing.Lottery_Status === "Not Yet Run");
+  return listings
+    .filter(listing => !listing.Lottery_Status || listing.Lottery_Status === "Not Yet Run")
+    .sort((a, b) => a.Name.localeCompare(b.Name));
 }
