@@ -125,14 +125,24 @@ const PREFERENCE_IMPLICATIONS = {
  * Claiming a preference also opts in any implied preferences (e.g. NRHP implies L_W).
  * @param {Array} preferences - All preferences for the listing
  * @param {number} claimedIndex - Index of the preference to claim; -1 means no preference claimed
+ * @param {object} options - Additional options
+ * @param {boolean} options.forceLW - If true, force L_W preferences to be opted in (e.g. for SFUSD employees)
+ * @param {string} options.tier - If set, only preferences in this tier are eligible for claiming. "tier1" or "non-tier1".
  */
-export function buildShortFormPreferences(preferences, claimedIndex = undefined) {
-	// If not specified, randomly pick one preference to claim (or -1 = no preference)
+export function buildShortFormPreferences(preferences, claimedIndex = undefined, { forceLW = false, tier = null } = {}) {
+	// Determine which preferences are eligible for claiming based on tier
+	const claimablePrefs = tier === "tier1"
+		? preferences.filter(p => p.preferenceName.startsWith("Tier 1"))
+		: tier === "non-tier1"
+			? preferences.filter(p => !p.preferenceName.startsWith("Tier 1"))
+			: preferences;
+
+	// If not specified, randomly pick one claimable preference (or -1 = no preference)
 	const resolvedIndex = claimedIndex !== undefined
 		? claimedIndex
-		: Math.floor(Math.random() * (preferences.length + 1)) - 1;
+		: Math.floor(Math.random() * (claimablePrefs.length + 1)) - 1;
 
-	const claimedDevName = resolvedIndex >= 0 ? preferences[resolvedIndex]?.devName : null;
+	const claimedDevName = resolvedIndex >= 0 ? claimablePrefs[resolvedIndex]?.devName : null;
 	const claimedSet = new Set(
 		claimedDevName
 			? [claimedDevName, ...(PREFERENCE_IMPLICATIONS[claimedDevName] || [])]
@@ -151,7 +161,9 @@ export function buildShortFormPreferences(preferences, claimedIndex = undefined)
 		}
 		// Custom preferences don't use optOut; standard preferences do
 		if (!isCustom) {
-			pref.optOut = !claimedSet.has(preference.devName);
+			const isClaimedOrImplied = claimedSet.has(preference.devName);
+			const isForcedLW = forceLW && isLW;
+			pref.optOut = !(isClaimedOrImplied || isForcedLW);
 		}
 		return pref;
 	});
@@ -177,6 +189,9 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 	const dob = faker.date.birthdate({ min: 21, max: 80, mode: "age" }).toISOString().split("T")[0];
 	const isPhoneOnly = Math.random() < (noEmailPercent / 100);
 
+	// For listing a0Wbb000002L0YXEA0, 50% of applicants are SFUSD employees
+	const isSFUSD = listingId === "a0Wbb000002L0YXEA0" && Math.random() < 0.5;
+
 	const primaryApplicant = {
 		email: isPhoneOnly ? "" : email,
 		firstName,
@@ -187,7 +202,7 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 		phoneType: isPhoneOnly ? "Cell" : null,
 		preferenceAddressMatch: "",
 		dob,
-		workInSf: false,
+		workInSf: isSFUSD ? true : false,
 		xCoordinate: -13627616.12366289,
 		yCoordinate: 4547681.551093868,
 		whichComponentOfLocatorWasUsed: "eas_gc",
@@ -200,8 +215,8 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 		mailingState: "CA",
 		mailingZip: "94103-1267",
 		mailingAddress: "1 S VAN NESS AVE APT A",
-		isSFUSDEmployee: null,
-		jobClassification: null,
+		isSFUSDEmployee: isSFUSD ? "Yes" : null,
+		jobClassification: isSFUSD ? String(faker.number.int({ min: 100000000, max: 999999999 })) : null,
 	};
 
 	const payload = {
@@ -254,7 +269,11 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 				lastPage: "review-terms",
 				groupedHouseholdAddresses: [],
 			}),
-			shortFormPreferences: buildShortFormPreferences(preferences, overrides.claimedPreferenceIndex),
+			shortFormPreferences: buildShortFormPreferences(
+				preferences,
+				overrides.claimedPreferenceIndex,
+				{ forceLW: isSFUSD, tier: isSFUSD ? "tier1" : (listingId === "a0Wbb000002L0YXEA0" ? "non-tier1" : null) },
+			),
 		},
 	};
 
