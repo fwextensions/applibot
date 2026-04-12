@@ -9,18 +9,31 @@ export const DEFAULT_SERVER = "full";
 
 // Valid Salesforce record type dev names. Anything not in this set must use "Custom".
 const VALID_RECORD_TYPES = new Set([
-	"COP", "V-COP", "DTHP", "V-DTHP", "NRHP", "V-NRHP", "L_W", "V-L_W",
+	"COP", "DTHP", "NRHP", "L_W",
 ]);
 
 const PREFERENCE_NAME_MAP = {
 	"Veteran with Certificate of Preference (V-COP)": "V-COP",
+	"Veteran with Certificate of Preference": "V-COP",
 	"Certificate of Preference (COP)": "COP",
 	"Veteran with Displaced Tenant Housing Preference (V-DTHP)": "V-DTHP",
+	"Veteran with Displaced Tenant Housing Preference": "V-DTHP",
 	"Displaced Tenant Housing Preference (DTHP)": "DTHP",
 	"Veteran with Neighborhood Resident Housing Preference (V-NRHP)": "V-NRHP",
+	"Veteran with Neighborhood Resident Housing Preference": "V-NRHP",
 	"Neighborhood Resident Housing Preference (NRHP)": "NRHP",
 	"Veteran with Live or Work in San Francisco Preference (V-L_W)": "V-L_W",
+	"Veteran with Live or Work in San Francisco Preference": "V-L_W",
 	"Live or Work in San Francisco Preference": "L_W",
+	"Tier 1 Veteran with Certificate of Preference": "T1-V-COP",
+	"Tier 1 Certificate of Preference": "T1-COP",
+	"Tier 1 Veteran with Displaced Tenant Housing Preference": "T1-V-DTHP",
+	"Tier 1 Displaced Tenant Housing Preference": "T1-DTHP",
+	"Tier 1 Veteran with Neighborhood Resident Housing Preference": "T1-V-NRHP",
+	"Tier 1 Neighborhood Resident Housing Preference": "T1-NRHP",
+	"Tier 1 Veteran with Live or Work in San Francisco Preference": "T1-V-L_W",
+	"Tier 1 Live or Work in San Francisco Preference": "T1-L_W",
+	"Tier 1 General Pool": "T1-GP",
 };
 
 function getDevNameFromPreferenceName(preferenceName) {
@@ -82,6 +95,14 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 
 	const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent, ...overrides });
 
+	const prefDevNameById = new Map(preferences.map(p => [p.listingPreferenceID, p.devName]));
+	const claimedPreferences = payload.application.shortFormPreferences
+		.filter(p => !p.optOut)
+		.map(p => p.recordTypeDevName === "Custom"
+			? (prefDevNameById.get(p.listingPreferenceID) ?? "Custom")
+			: p.recordTypeDevName)
+		.join("; ");
+
 	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
 	const response = await fetch(`${apiPath}/v1/short-form/application`, {
 		method: "POST",
@@ -100,7 +121,7 @@ export async function submitApplication(listingId, preferences, overrides = {}, 
 
 	return {
 		...result,
-		applicantDetails: { ...applicantDetails, id: result.id, listingId },
+		applicantDetails: { ...applicantDetails, id: result.id, listingId, claimedPreferences: claimedPreferences || "none" },
 	};
 }
 
@@ -151,20 +172,17 @@ export function buildShortFormPreferences(preferences, claimedIndex = undefined,
 
 	return preferences.map((preference) => {
 		const isLW = LW_DEV_NAMES.has(preference.devName);
-		const isCustom = preference.devName === "Custom";
+		const isCustom = !VALID_RECORD_TYPES.has(preference.devName);
 		const pref = {
-			recordTypeDevName: preference.devName,
+			recordTypeDevName: isCustom ? "Custom" : preference.devName,
 			listingPreferenceID: preference.listingPreferenceID,
 		};
 		if (isLW) {
 			pref.individualPreference = "Live in SF";
 		}
-		// Custom preferences don't use optOut; standard preferences do
-		if (!isCustom) {
-			const isClaimedOrImplied = claimedSet.has(preference.devName);
-			const isForcedLW = forceLW && isLW;
-			pref.optOut = !(isClaimedOrImplied || isForcedLW);
-		}
+		const isClaimedOrImplied = claimedSet.has(preference.devName);
+		const isForcedLW = forceLW && isLW;
+		pref.optOut = !(isClaimedOrImplied || isForcedLW);
 		return pref;
 	});
 }

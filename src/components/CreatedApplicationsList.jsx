@@ -4,7 +4,7 @@ export default function CreatedApplicationsList({ createdApps }) {
 	}
 
 	const handleExportCsv = () => {
-		const headers = ["First Name", "Last Name", "Email", "Application ID", "Listing ID", "Salesforce URL", "Response Time (s)", "Target Count"];
+		const headers = ["First Name", "Last Name", "Email", "Application ID", "Listing ID", "Claimed Preferences", "Salesforce URL", "Response Time (s)", "Target Count"];
 		const csvContent = [
 			headers.join(","),
 			...createdApps.map(app => [
@@ -13,6 +13,7 @@ export default function CreatedApplicationsList({ createdApps }) {
 				app.email,
 				app.id,
 				app.listingId,
+				`"${(app.claimedPreferences || "none").replace(/"/g, '""')}"`,
 				`https://sfhousing--full.sandbox.lightning.force.com/lightning/r/Application__c/${app.id}/view`,
 				app.responseTime.toFixed(2),
 				app.targetCount || 1

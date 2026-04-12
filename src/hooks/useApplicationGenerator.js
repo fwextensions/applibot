@@ -210,13 +210,18 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 			showStatus(`Building ${numApplications} application(s)...`, "info");
 
+			const prefNameById = new Map(preferences.map(p => [p.listingPreferenceID, p.devName]));
+
 			const rows = [];
 			for (let i = 0; i < numApplications; i++) {
 				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent });
 				const claimedPrefs = payload.application.shortFormPreferences
 					.filter(p => !p.optOut)
-					.map(p => p.recordTypeDevName)
+					.map(p => p.recordTypeDevName === "Custom"
+						? (prefNameById.get(p.listingPreferenceID) ?? "Custom")
+						: p.recordTypeDevName)
 					.join("; ");
+				console.log(`[${i + 1}] claimedPrefs: ${claimedPrefs || "none"}`);
 				rows.push({
 					firstName: applicantDetails.firstName,
 					lastName: applicantDetails.lastName,
