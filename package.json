@@ -15,12 +15,12 @@
 		"applibot": "./bin/cli.js"
 	},
 	"dependencies": {
-		"@faker-js/faker": "^10.1.0",
-		"@tailwindcss/vite": "^4.1.17",
-		"@vitejs/plugin-react": "^5.1.1",
-		"react": "^19.2.0",
-		"react-dom": "^19.2.0",
-		"tailwindcss": "^4.1.17",
-		"vite": "^7.2.2"
+		"@faker-js/faker": "^10.5.0",
+		"@tailwindcss/vite": "^4.3.1",
+		"@vitejs/plugin-react": "^6.0.3",
+		"react": "^19.2.7",
+		"react-dom": "^19.2.7",
+		"tailwindcss": "^4.3.1",
+		"vite": "^8.1.0"
 	}
 }
