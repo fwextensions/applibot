@@ -8,6 +8,7 @@ export default function ListingForm({
 	isGenerating,
 	onSubmit,
 	onExportCsv,
+	onPreviewDryRun,
 }) {
 	return (
 		<div className="space-y-6">
@@ -70,6 +71,13 @@ export default function ListingForm({
 				className="w-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out"
 			>
 				{isGenerating ? "Generating..." : "Save as CSV (dry run)"}
+			</button>
+			<button
+				onClick={onPreviewDryRun}
+				disabled={isGenerating}
+				className="w-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out"
+			>
+				{isGenerating ? "Generating..." : "Dry Run (preview)"}
 			</button>
 		</div>
 	);

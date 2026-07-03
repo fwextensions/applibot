@@ -1,6 +1,7 @@
 import { useState } from "react";
 import CsvUploader from "./components/CsvUploader";
 import CreatedApplicationsList from "./components/CreatedApplicationsList";
+import DryRunTable from "./components/DryRunTable";
 import ListingForm from "./components/ListingForm";
 import ListingPicker from "./components/ListingPicker";
 import ServerSelector from "./components/ServerSelector";
@@ -27,6 +28,9 @@ export default function App() {
     processCsvData,
     handleExportCsv,
     exportCsvDryRun,
+    previewDryRun,
+    previewCsvDryRun,
+    dryRunRows,
     cancelGeneration,
     server,
     setServer,
@@ -74,6 +78,7 @@ export default function App() {
             <CsvUploader
               onGenerate={processCsvData}
               onExportDryRun={exportCsvDryRun}
+              onPreviewDryRun={previewCsvDryRun}
               isProcessing={isGenerating}
               defaultListingId={listingId}
               defaultNumApplications={numApplications}
@@ -99,6 +104,7 @@ export default function App() {
               isGenerating={isGenerating}
               onSubmit={handleGenerateApplications}
               onExportCsv={handleExportCsv}
+              onPreviewDryRun={previewDryRun}
             />
           </>
         )}
@@ -106,6 +112,10 @@ export default function App() {
         <StatusBanner status={status} />
 
         <CreatedApplicationsList createdApps={createdApps} />
+      </section>
+
+      <section className="max-w-6xl mx-auto mt-8">
+        <DryRunTable rows={dryRunRows} />
       </section>
     </main>
   );

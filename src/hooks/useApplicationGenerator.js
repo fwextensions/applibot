@@ -28,6 +28,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 	const [server, setServer] = useState(DEFAULT_SERVER);
 	const [altContactPercent, setAltContactPercent] = useState(33);
 	const [noEmailPercent, setNoEmailPercent] = useState(5);
+	const [dryRunRows, setDryRunRows] = useState([]);
 	const cancelRef = useRef(false);
 
 	const showStatus = useCallback((message, type) => {
@@ -135,6 +136,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 					appsByListing[row.ListingID] = [];
 				}
 				appsByListing[row.ListingID].push({
+					firstName: row.FirstName,
 					lastName: row.LastName,
 					email: row.Email,
 					numApplications: parseInt(row.NumApplications, 10) || 1,
@@ -178,6 +180,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 						try {
 							const startTime = performance.now();
 							const result = await submitApplication(listingId, preferences, {
+								firstName: row.firstName,
 								lastName: row.lastName,
 								email: row.email,
 								preference: row.preference,
@@ -313,6 +316,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 					appsByListing[row.ListingID] = [];
 				}
 				appsByListing[row.ListingID].push({
+					firstName: row.FirstName,
 					lastName: row.LastName,
 					email: row.Email,
 					numApplications: parseInt(row.NumApplications, 10) || 1,
@@ -345,6 +349,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 						}
 
 						const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, {
+							firstName: row.firstName,
 							lastName: row.lastName,
 							email: row.email,
 							preference: row.preference,
@@ -390,6 +395,169 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		}
 	}, [isGenerating, server, altContactPercent, noEmailPercent, showStatus]);
 
+	const previewDryRun = useCallback(async () => {
+		if (isGenerating) return;
+
+		if (!listingId.trim()) {
+			showStatus("Please enter a listing ID", "error");
+			return;
+		}
+
+		if (!numApplications || numApplications < 1) {
+			showStatus("Please enter a valid number of applications", "error");
+			return;
+		}
+
+		setIsGenerating(true);
+		cancelRef.current = false;
+		setDryRunRows([]);
+		try {
+			showStatus("Fetching preferences...", "info");
+			const preferences = await getPreferences(listingId, server);
+
+			showStatus(`Building ${numApplications} application(s)...`, "info");
+
+			const prefNameById = new Map(preferences.map(p => [p.listingPreferenceID, p.devName]));
+
+			const rows = [];
+			let cancelled = false;
+			for (let i = 0; i < numApplications; i++) {
+				if (cancelRef.current) {
+					cancelled = true;
+					break;
+				}
+
+				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent });
+				const claimedPrefs = payload.application.shortFormPreferences
+					.filter(p => !p.optOut)
+					.map(p => p.recordTypeDevName === "Custom"
+						? (prefNameById.get(p.listingPreferenceID) ?? "Custom")
+						: p.recordTypeDevName)
+					.join("; ");
+				rows.push({
+					firstName: applicantDetails.firstName,
+					lastName: applicantDetails.lastName,
+					email: applicantDetails.email,
+					dob: payload.application.primaryApplicant.dob,
+					listingId,
+					claimedPreferences: claimedPrefs || "none",
+					payload: JSON.stringify(payload),
+				});
+			}
+
+			setDryRunRows(rows);
+
+			if (cancelled) {
+				showStatus(`Cancelled: previewed ${rows.length} application(s)`, "warning");
+			} else {
+				showStatus(`✓ Previewed ${rows.length} application(s)`, "success");
+			}
+		} catch (error) {
+			showStatus(`Error: ${error.message}`, "error");
+			console.error(error);
+		} finally {
+			setIsGenerating(false);
+			cancelRef.current = false;
+		}
+	}, [isGenerating, listingId, numApplications, server, altContactPercent, noEmailPercent, showStatus]);
+
+	const previewCsvDryRun = useCallback(async (csvData) => {
+		if (isGenerating) return;
+
+		if (!csvData || csvData.length === 0) {
+			showStatus("No rows to preview", "error");
+			return;
+		}
+
+		setIsGenerating(true);
+		cancelRef.current = false;
+		setDryRunRows([]);
+		showStatus("Building dry run application(s)...", "info");
+
+		try {
+			const appsByListing = {};
+			csvData.forEach(row => {
+				if (!appsByListing[row.ListingID]) {
+					appsByListing[row.ListingID] = [];
+				}
+				appsByListing[row.ListingID].push({
+					firstName: row.FirstName,
+					lastName: row.LastName,
+					email: row.Email,
+					numApplications: parseInt(row.NumApplications, 10) || 1,
+					preference: row.Preference
+				});
+			});
+
+			const rows = [];
+			let cancelled = false;
+
+			listingLoop:
+			for (const [listingId, listingRows] of Object.entries(appsByListing)) {
+				showStatus(`Fetching preferences for listing ${listingId}...`, "info");
+				let preferences;
+				try {
+					preferences = await getPreferences(listingId, server);
+				} catch (error) {
+					console.error(`Failed to fetch preferences for ${listingId}:`, error);
+					showStatus(`Failed to fetch preferences for listing ${listingId}. Skipping.`, "error");
+					continue;
+				}
+
+				const prefNameById = new Map(preferences.map(p => [p.listingPreferenceID, p.devName]));
+
+				for (const row of listingRows) {
+					for (let i = 0; i < row.numApplications; i++) {
+						if (cancelRef.current) {
+							cancelled = true;
+							break listingLoop;
+						}
+
+						const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, {
+							firstName: row.firstName,
+							lastName: row.lastName,
+							email: row.email,
+							preference: row.preference,
+							altContactPercent,
+							noEmailPercent
+						});
+						const claimedPrefs = payload.application.shortFormPreferences
+							.filter(p => !p.optOut)
+							.map(p => p.recordTypeDevName === "Custom"
+								? (prefNameById.get(p.listingPreferenceID) ?? "Custom")
+								: p.recordTypeDevName)
+							.join("; ");
+						rows.push({
+							firstName: applicantDetails.firstName,
+							lastName: applicantDetails.lastName,
+							email: applicantDetails.email,
+							dob: payload.application.primaryApplicant.dob,
+							listingId,
+							claimedPreferences: claimedPrefs || "none",
+							payload: JSON.stringify(payload),
+						});
+					}
+				}
+			}
+
+			setDryRunRows(rows);
+
+			if (cancelled) {
+				showStatus(`Cancelled: previewed ${rows.length} application(s)`, "warning");
+			} else if (rows.length === 0) {
+				showStatus("No applications were built. Check that listing IDs are valid.", "warning");
+			} else {
+				showStatus(`✓ Previewed ${rows.length} application(s)`, "success");
+			}
+		} catch (error) {
+			showStatus(`Error: ${error.message}`, "error");
+			console.error(error);
+		} finally {
+			setIsGenerating(false);
+			cancelRef.current = false;
+		}
+	}, [isGenerating, server, altContactPercent, noEmailPercent, showStatus]);
+
 	return {
 		listingId,
 		setListingId,
@@ -402,6 +570,9 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		processCsvData,
 		handleExportCsv,
 		exportCsvDryRun,
+		previewDryRun,
+		previewCsvDryRun,
+		dryRunRows,
 		cancelGeneration,
 		server,
 		setServer,

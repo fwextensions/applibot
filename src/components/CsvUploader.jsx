@@ -3,6 +3,7 @@ import { useState, useCallback, useMemo } from "react";
 export default function CsvUploader({
   onGenerate,
   onExportDryRun,
+  onPreviewDryRun,
   isProcessing,
   defaultListingId = "",
   defaultNumApplications = 1,
@@ -147,6 +148,7 @@ export default function CsvUploader({
         }
 
         // Standard CSV parsing
+        const firstNameIndex = headers.findIndex(h => h.toLowerCase().includes("first name") || h.toLowerCase() === "firstname");
         const lastNameIndex = headers.findIndex(h => h.toLowerCase().includes("last name") || h.toLowerCase() === "lastname");
         const emailIndex = headers.findIndex(h => h.toLowerCase().includes("email"));
         const listingIdIndex = headers.findIndex(h => h.toLowerCase().includes("listing id") || h.toLowerCase() === "listingid");
@@ -159,6 +161,7 @@ export default function CsvUploader({
           if (!currentLine) continue;
 
           const values = currentLine.split(",");
+          const firstName = firstNameIndex !== -1 ? values[firstNameIndex]?.trim() : "";
           const lastName = lastNameIndex !== -1 ? values[lastNameIndex]?.trim() : "";
           const email = emailIndex !== -1 ? values[emailIndex]?.trim() : "";
           const listingId = listingIdIndex !== -1 ? values[listingIdIndex]?.trim() : "";
@@ -171,6 +174,11 @@ export default function CsvUploader({
           // only include Email if it has a value; omitting it lets the backend auto-generate one
           if (email) {
             row.Email = email;
+          }
+
+          // only include FirstName if it has a value
+          if (firstName) {
+            row.FirstName = firstName;
           }
 
           // only include LastName if it has a value
@@ -319,6 +327,13 @@ export default function CsvUploader({
             className="w-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out"
           >
             Save as CSV (dry run)
+          </button>
+          <button
+            onClick={() => onPreviewDryRun(resolvedRows)}
+            disabled={!isReady || isProcessing}
+            className="w-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out"
+          >
+            Dry Run (preview)
           </button>
         </div>
       )}

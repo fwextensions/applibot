@@ -204,7 +204,7 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 	const externalSessionId = `${sessionId1}-${sessionId2}`;
 
 	const baseEmail = overrides.email || generateEmail();
-	const firstName = faker.person.firstName();
+	const firstName = overrides.firstName || faker.person.firstName();
 	const lastName = overrides.lastName || faker.person.lastName();
 
 	const emailParts = baseEmail.split("@");
