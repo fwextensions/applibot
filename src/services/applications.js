@@ -78,7 +78,7 @@ export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 	const data = await prefsResponse.json();
 
 	if (!data.preferences || data.preferences.length === 0) {
-		throw new Error(`Listing ${listingId} not found on this server`);
+		return [];
 	}
 
 	return data.preferences.map((preference) => ({
@@ -149,21 +149,29 @@ const PREFERENCE_IMPLICATIONS = {
  * @param {object} options - Additional options
  * @param {boolean} options.forceLW - If true, force L_W preferences to be opted in (e.g. for SFUSD employees)
  * @param {string} options.tier - If set, only preferences in this tier are eligible for claiming. "tier1" or "non-tier1".
+ * @param {string} options.claimedDevName - If set, explicitly claims this devName (e.g. "COP", "V-COP") instead of using claimedIndex/tier. Pass null/"" to claim nothing.
  */
-export function buildShortFormPreferences(preferences, claimedIndex = undefined, { forceLW = false, tier = null } = {}) {
-	// Determine which preferences are eligible for claiming based on tier
-	const claimablePrefs = tier === "tier1"
-		? preferences.filter(p => p.preferenceName.startsWith("Tier 1"))
-		: tier === "non-tier1"
-			? preferences.filter(p => !p.preferenceName.startsWith("Tier 1"))
-			: preferences;
+export function buildShortFormPreferences(preferences, claimedIndex = undefined, { forceLW = false, tier = null, claimedDevName: explicitDevName = undefined } = {}) {
+	let claimedDevName;
+	if (explicitDevName !== undefined) {
+		// an explicit devName (e.g. from a CSV "Preference" column) skips the tier/index logic entirely
+		claimedDevName = explicitDevName || null;
+	} else {
+		// Determine which preferences are eligible for claiming based on tier
+		const claimablePrefs = tier === "tier1"
+			? preferences.filter(p => p.preferenceName.startsWith("Tier 1"))
+			: tier === "non-tier1"
+				? preferences.filter(p => !p.preferenceName.startsWith("Tier 1"))
+				: preferences;
 
-	// If not specified, randomly pick one claimable preference (or -1 = no preference)
-	const resolvedIndex = claimedIndex !== undefined
-		? claimedIndex
-		: Math.floor(Math.random() * (claimablePrefs.length + 1)) - 1;
+		// If not specified, randomly pick one claimable preference (or -1 = no preference)
+		const resolvedIndex = claimedIndex !== undefined
+			? claimedIndex
+			: Math.floor(Math.random() * (claimablePrefs.length + 1)) - 1;
 
-	const claimedDevName = resolvedIndex >= 0 ? claimablePrefs[resolvedIndex]?.devName : null;
+		claimedDevName = resolvedIndex >= 0 ? claimablePrefs[resolvedIndex]?.devName : null;
+	}
+
 	const claimedSet = new Set(
 		claimedDevName
 			? [claimedDevName, ...(PREFERENCE_IMPLICATIONS[claimedDevName] || [])]
@@ -209,6 +217,20 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 
 	// For listing a0Wbb000002L0YXEA0, 50% of applicants are SFUSD employees
 	const isSFUSD = listingId === "a0Wbb000002L0YXEA0" && Math.random() < 0.5;
+
+	// Explicit preference override (e.g. from a CSV "Preference" column): a devName like "COP",
+	// "V-COP", "L_W", etc., or "None"/"" to claim nothing. Leaving it unset preserves the random default.
+	let explicitDevName;
+	if (overrides.preference !== undefined) {
+		const requested = String(overrides.preference).trim();
+		if (requested === "" || requested.toLowerCase() === "none") {
+			explicitDevName = null;
+		} else if (preferences.some(p => p.devName === requested)) {
+			explicitDevName = requested;
+		} else {
+			throw new Error(`Preference "${requested}" is not available on listing ${listingId}`);
+		}
+	}
 
 	const primaryApplicant = {
 		email: isPhoneOnly ? "" : email,
@@ -290,7 +312,11 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 			shortFormPreferences: buildShortFormPreferences(
 				preferences,
 				overrides.claimedPreferenceIndex,
-				{ forceLW: isSFUSD, tier: isSFUSD ? "tier1" : (listingId === "a0Wbb000002L0YXEA0" ? "non-tier1" : null) },
+				{
+					forceLW: isSFUSD,
+					tier: isSFUSD ? "tier1" : (listingId === "a0Wbb000002L0YXEA0" ? "non-tier1" : null),
+					claimedDevName: explicitDevName,
+				},
 			),
 		},
 	};

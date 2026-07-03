@@ -11,12 +11,14 @@ import { SERVERS } from '../services/applications';
  * @param {string} props.selectedListingId - Currently selected listing ID
  * @param {function} props.onListingChange - Callback when listing changes
  * @param {boolean} props.disabled - Disable during generation
+ * @param {string} props.label - Label text shown above the picker
  */
 export default function ListingPicker({ 
   server, 
   selectedListingId, 
   onListingChange, 
-  disabled = false 
+  disabled = false,
+  label = "Listing",
 }) {
   // Internal state
   const [listings, setListings] = useState([]);
@@ -126,7 +128,7 @@ export default function ListingPicker({
     return (
       <div className="mb-6">
         <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Listing
+          {label}
         </label>
         <div className="flex items-center gap-2 text-gray-500">
           <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -144,7 +146,7 @@ export default function ListingPicker({
     return (
       <div className="mb-6">
         <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Listing
+          {label}
         </label>
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-600 text-sm mb-2">{error}</p>
@@ -166,7 +168,7 @@ export default function ListingPicker({
     <div className="mb-6">
       <div className="flex items-center justify-between mb-2">
         <label className="block text-sm font-semibold text-gray-700">
-          Listing
+          {label}
         </label>
         <button
           type="button"

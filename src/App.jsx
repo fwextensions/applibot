@@ -1,12 +1,20 @@
+import { useState } from "react";
 import CsvUploader from "./components/CsvUploader";
 import CreatedApplicationsList from "./components/CreatedApplicationsList";
 import ListingForm from "./components/ListingForm";
 import ListingPicker from "./components/ListingPicker";
 import ServerSelector from "./components/ServerSelector";
 import StatusBanner from "./components/StatusBanner";
+import Tabs from "./components/Tabs";
 import useApplicationGenerator from "./hooks/useApplicationGenerator";
 
+const TABS = [
+  { id: "csv", label: "Upload CSV" },
+  { id: "manual", label: "Manual Entry" },
+];
+
 export default function App() {
+  const [activeTab, setActiveTab] = useState("csv");
   const {
     listingId,
     setListingId,
@@ -18,6 +26,8 @@ export default function App() {
     handleGenerateApplications,
     processCsvData,
     handleExportCsv,
+    exportCsvDryRun,
+    cancelGeneration,
     server,
     setServer,
     altContactPercent,
@@ -39,35 +49,59 @@ export default function App() {
           disabled={isGenerating}
         />
 
-        <CsvUploader onUpload={processCsvData} isProcessing={isGenerating} />
+        <Tabs tabs={TABS} activeTab={activeTab} onTabChange={setActiveTab} disabled={isGenerating} />
 
-        <div className="relative my-8">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or generate manually</span>
-          </div>
-        </div>
+        {isGenerating && (
+          <button
+            type="button"
+            onClick={cancelGeneration}
+            className="w-full mb-6 bg-red-50 hover:bg-red-100 text-red-700 font-semibold py-2 px-6 rounded-lg border border-red-200 transition duration-200 ease-in-out"
+          >
+            Cancel
+          </button>
+        )}
 
-        <ListingPicker
-          server={server}
-          selectedListingId={listingId}
-          onListingChange={setListingId}
-          disabled={isGenerating}
-        />
+        {activeTab === "csv" ? (
+          <>
+            <ListingPicker
+              server={server}
+              selectedListingId={listingId}
+              onListingChange={setListingId}
+              disabled={isGenerating}
+              label="Default listing (for rows without one)"
+            />
 
-        <ListingForm
-          numApplications={numApplications}
-          onNumApplicationsChange={(event) => setNumApplications(parseInt(event.target.value))}
-          altContactPercent={altContactPercent}
-          onAltContactPercentChange={(event) => setAltContactPercent(parseInt(event.target.value) || 0)}
-          noEmailPercent={noEmailPercent}
-          onNoEmailPercentChange={(event) => setNoEmailPercent(parseInt(event.target.value) || 0)}
-          isGenerating={isGenerating}
-          onSubmit={handleGenerateApplications}
-          onExportCsv={handleExportCsv}
-        />
+            <CsvUploader
+              onGenerate={processCsvData}
+              onExportDryRun={exportCsvDryRun}
+              isProcessing={isGenerating}
+              defaultListingId={listingId}
+              defaultNumApplications={numApplications}
+              onDefaultNumApplicationsChange={(event) => setNumApplications(parseInt(event.target.value) || 1)}
+            />
+          </>
+        ) : (
+          <>
+            <ListingPicker
+              server={server}
+              selectedListingId={listingId}
+              onListingChange={setListingId}
+              disabled={isGenerating}
+            />
+
+            <ListingForm
+              numApplications={numApplications}
+              onNumApplicationsChange={(event) => setNumApplications(parseInt(event.target.value))}
+              altContactPercent={altContactPercent}
+              onAltContactPercentChange={(event) => setAltContactPercent(parseInt(event.target.value) || 0)}
+              noEmailPercent={noEmailPercent}
+              onNoEmailPercentChange={(event) => setNoEmailPercent(parseInt(event.target.value) || 0)}
+              isGenerating={isGenerating}
+              onSubmit={handleGenerateApplications}
+              onExportCsv={handleExportCsv}
+            />
+          </>
+        )}
 
         <StatusBanner status={status} />
 

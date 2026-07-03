@@ -1,5 +1,22 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { getPreferences, submitApplication, buildApplicationPayload, DEFAULT_SERVER } from "../services/applications";
+
+function downloadCsv(headers, rows, filenamePrefix) {
+	const csvContent = [
+		headers.join(","),
+		...rows.map(row =>
+			headers.map(h => `"${String(row[h]).replace(/"/g, '""')}"`).join(",")
+		),
+	].join("\n");
+
+	const blob = new Blob([csvContent], { type: "text/csv" });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = `${filenamePrefix}-${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
 
 export default function useApplicationGenerator(defaultListingId = "") {
 	const [listingId, setListingId] = useState(defaultListingId);
@@ -11,10 +28,16 @@ export default function useApplicationGenerator(defaultListingId = "") {
 	const [server, setServer] = useState(DEFAULT_SERVER);
 	const [altContactPercent, setAltContactPercent] = useState(33);
 	const [noEmailPercent, setNoEmailPercent] = useState(5);
+	const cancelRef = useRef(false);
 
 	const showStatus = useCallback((message, type) => {
 		setStatus({ message, type });
 	}, []);
+
+	const cancelGeneration = useCallback(() => {
+		cancelRef.current = true;
+		showStatus("Cancelling...", "warning");
+	}, [showStatus]);
 
 	const handleGenerateApplications = useCallback(async () => {
 		if (isGenerating) {
@@ -37,22 +60,24 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		}
 
 		setIsGenerating(true);
+		cancelRef.current = false;
 
 		try {
 			showStatus("Fetching preferences...", "info");
 			const preferences = await getPreferences(listingId, server);
 
-			if (preferences.length === 0) {
-				showStatus("No preferences found for this listing", "error");
-				return;
-			}
-
 			showStatus(`Found ${preferences.length} preferences. Generating ${numApplications} application(s)...`, "info");
 
 			let successCount = 0;
 			let failCount = 0;
+			let cancelled = false;
 
 			for (let index = 0; index < numApplications; index += 1) {
+				if (cancelRef.current) {
+					cancelled = true;
+					break;
+				}
+
 				try {
 					const startTime = performance.now();
 					const result = await submitApplication(listingId, preferences, { altContactPercent, noEmailPercent }, server);
@@ -71,7 +96,9 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				}
 			}
 
-			if (failCount === 0) {
+			if (cancelled) {
+				showStatus(`Cancelled: ${successCount} successful, ${failCount} failed`, "warning");
+			} else if (failCount === 0) {
 				showStatus(`✓ Successfully generated ${successCount} application(s)!`, "success");
 			} else {
 				showStatus(`Completed: ${successCount} successful, ${failCount} failed`, successCount > 0 ? "info" : "error");
@@ -81,6 +108,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			console.error(error);
 		} finally {
 			setIsGenerating(false);
+			cancelRef.current = false;
 		}
 	}, [isGenerating, listingId, numApplications, currentListingId, showStatus, server, altContactPercent, noEmailPercent]);
 
@@ -89,6 +117,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		if (isGenerating) return;
 
 		setIsGenerating(true);
+		cancelRef.current = false;
 		showStatus("Starting batch generation...", "info");
 		setCreatedApps(existingApps);
 
@@ -96,6 +125,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		let failCount = 0;
 		let skippedCount = 0;
 		let currentAppIndex = 0;
+		let cancelled = false;
 
 		try {
 			// Group by listing ID to minimize preference fetches
@@ -107,12 +137,14 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				appsByListing[row.ListingID].push({
 					lastName: row.LastName,
 					email: row.Email,
-					numApplications: parseInt(row.NumApplications, 10) || 1
+					numApplications: parseInt(row.NumApplications, 10) || 1,
+					preference: row.Preference
 				});
 			});
 
 			const totalApps = Object.values(appsByListing).reduce((acc, rows) => acc + rows.reduce((rAcc, r) => rAcc + r.numApplications, 0), 0);
 
+			listingLoop:
 			for (const [listingId, rows] of Object.entries(appsByListing)) {
 				showStatus(`Fetching preferences for listing ${listingId}...`, "info");
 				let preferences;
@@ -137,12 +169,18 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 				for (const row of rows) {
 					for (let i = 0; i < row.numApplications; i++) {
+						if (cancelRef.current) {
+							cancelled = true;
+							break listingLoop;
+						}
+
 						currentAppIndex++;
 						try {
 							const startTime = performance.now();
 							const result = await submitApplication(listingId, preferences, {
 								lastName: row.lastName,
 								email: row.email,
+								preference: row.preference,
 								altContactPercent,
 								noEmailPercent
 							}, server);
@@ -169,7 +207,9 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				}
 			}
 
-			if (successCount === 0 && failCount === 0) {
+			if (cancelled) {
+				showStatus(`Cancelled: ${successCount} successful, ${failCount} failed`, "warning");
+			} else if (successCount === 0 && failCount === 0) {
 				showStatus("No applications were generated. Check that listing IDs exist on this server.", "warning");
 			} else if (failCount === 0) {
 				showStatus(`✓ Successfully generated ${successCount} application(s)!`, "success");
@@ -182,6 +222,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			console.error(error);
 		} finally {
 			setIsGenerating(false);
+			cancelRef.current = false;
 		}
 	}, [isGenerating, showStatus, server, altContactPercent, noEmailPercent]);
 
@@ -199,21 +240,23 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		}
 
 		setIsGenerating(true);
+		cancelRef.current = false;
 		try {
 			showStatus("Fetching preferences...", "info");
 			const preferences = await getPreferences(listingId, server);
-
-			if (preferences.length === 0) {
-				showStatus("No preferences found for this listing", "error");
-				return;
-			}
 
 			showStatus(`Building ${numApplications} application(s)...`, "info");
 
 			const prefNameById = new Map(preferences.map(p => [p.listingPreferenceID, p.devName]));
 
 			const rows = [];
+			let cancelled = false;
 			for (let i = 0; i < numApplications; i++) {
+				if (cancelRef.current) {
+					cancelled = true;
+					break;
+				}
+
 				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent });
 				const claimedPrefs = payload.application.shortFormPreferences
 					.filter(p => !p.optOut)
@@ -233,30 +276,119 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				});
 			}
 
-			const headers = ["firstName", "lastName", "email", "dob", "listingId", "claimedPreferences", "payload"];
-			const csvContent = [
-				headers.join(","),
-				...rows.map(row =>
-					headers.map(h => `"${String(row[h]).replace(/"/g, '""')}"`).join(",")
-				),
-			].join("\n");
+			if (rows.length > 0) {
+				downloadCsv(["firstName", "lastName", "email", "dob", "listingId", "claimedPreferences", "payload"], rows, "applications-dry-run");
+			}
 
-			const blob = new Blob([csvContent], { type: "text/csv" });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = url;
-			a.download = `applications-dry-run-${new Date().toISOString().replace(/[:.]/g, "-")}.csv`;
-			a.click();
-			URL.revokeObjectURL(url);
-
-			showStatus(`✓ Exported ${numApplications} application(s) to CSV`, "success");
+			if (cancelled) {
+				showStatus(`Cancelled: exported ${rows.length} application(s)`, "warning");
+			} else {
+				showStatus(`✓ Exported ${rows.length} application(s) to CSV`, "success");
+			}
 		} catch (error) {
 			showStatus(`Error: ${error.message}`, "error");
 			console.error(error);
 		} finally {
 			setIsGenerating(false);
+			cancelRef.current = false;
 		}
 	}, [isGenerating, listingId, numApplications, server, altContactPercent, noEmailPercent, showStatus]);
+
+	const exportCsvDryRun = useCallback(async (csvData) => {
+		if (isGenerating) return;
+
+		if (!csvData || csvData.length === 0) {
+			showStatus("No rows to export", "error");
+			return;
+		}
+
+		setIsGenerating(true);
+		cancelRef.current = false;
+		showStatus("Building dry run application(s)...", "info");
+
+		try {
+			const appsByListing = {};
+			csvData.forEach(row => {
+				if (!appsByListing[row.ListingID]) {
+					appsByListing[row.ListingID] = [];
+				}
+				appsByListing[row.ListingID].push({
+					lastName: row.LastName,
+					email: row.Email,
+					numApplications: parseInt(row.NumApplications, 10) || 1,
+					preference: row.Preference
+				});
+			});
+
+			const rows = [];
+			let cancelled = false;
+
+			listingLoop:
+			for (const [listingId, listingRows] of Object.entries(appsByListing)) {
+				showStatus(`Fetching preferences for listing ${listingId}...`, "info");
+				let preferences;
+				try {
+					preferences = await getPreferences(listingId, server);
+				} catch (error) {
+					console.error(`Failed to fetch preferences for ${listingId}:`, error);
+					showStatus(`Failed to fetch preferences for listing ${listingId}. Skipping.`, "error");
+					continue;
+				}
+
+				const prefNameById = new Map(preferences.map(p => [p.listingPreferenceID, p.devName]));
+
+				for (const row of listingRows) {
+					for (let i = 0; i < row.numApplications; i++) {
+						if (cancelRef.current) {
+							cancelled = true;
+							break listingLoop;
+						}
+
+						const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, {
+							lastName: row.lastName,
+							email: row.email,
+							preference: row.preference,
+							altContactPercent,
+							noEmailPercent
+						});
+						const claimedPrefs = payload.application.shortFormPreferences
+							.filter(p => !p.optOut)
+							.map(p => p.recordTypeDevName === "Custom"
+								? (prefNameById.get(p.listingPreferenceID) ?? "Custom")
+								: p.recordTypeDevName)
+							.join("; ");
+						rows.push({
+							firstName: applicantDetails.firstName,
+							lastName: applicantDetails.lastName,
+							email: applicantDetails.email,
+							dob: payload.application.primaryApplicant.dob,
+							listingId,
+							claimedPreferences: claimedPrefs || "none",
+							payload: JSON.stringify(payload),
+						});
+					}
+				}
+			}
+
+			if (rows.length > 0) {
+				downloadCsv(["firstName", "lastName", "email", "dob", "listingId", "claimedPreferences", "payload"], rows, "applications-dry-run");
+			}
+
+			if (cancelled) {
+				showStatus(`Cancelled: exported ${rows.length} application(s)`, "warning");
+			} else if (rows.length === 0) {
+				showStatus("No applications were built. Check that listing IDs are valid.", "warning");
+			} else {
+				showStatus(`✓ Exported ${rows.length} application(s) to CSV`, "success");
+			}
+		} catch (error) {
+			showStatus(`Error: ${error.message}`, "error");
+			console.error(error);
+		} finally {
+			setIsGenerating(false);
+			cancelRef.current = false;
+		}
+	}, [isGenerating, server, altContactPercent, noEmailPercent, showStatus]);
 
 	return {
 		listingId,
@@ -269,6 +401,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		handleGenerateApplications,
 		processCsvData,
 		handleExportCsv,
+		exportCsvDryRun,
+		cancelGeneration,
 		server,
 		setServer,
 		altContactPercent,

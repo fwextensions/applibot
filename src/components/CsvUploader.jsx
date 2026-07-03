@@ -1,8 +1,18 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 
-export default function CsvUploader({ onUpload, isProcessing }) {
+export default function CsvUploader({
+  onGenerate,
+  onExportDryRun,
+  isProcessing,
+  defaultListingId = "",
+  defaultNumApplications = 1,
+  onDefaultNumApplicationsChange,
+}) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [rawRows, setRawRows] = useState([]);
+  const [existingApps, setExistingApps] = useState([]);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -45,6 +55,7 @@ export default function CsvUploader({ onUpload, isProcessing }) {
           const targetCountIndex = headers.indexOf("Target Count");
           const appIdIndex = headers.findIndex(h => h.toLowerCase().includes("application id"));
           const responseTimeIndex = headers.findIndex(h => h.toLowerCase().includes("response time"));
+          const preferenceIndex = headers.findIndex(h => h.toLowerCase().includes("preference") && !h.toLowerCase().includes("claimed"));
 
           const groups = {};
           const existingApps = [];
@@ -61,13 +72,15 @@ export default function CsvUploader({ onUpload, isProcessing }) {
             const targetCount = parseInt(values[targetCountIndex]?.trim(), 10) || 0;
             const appId = appIdIndex !== -1 ? values[appIdIndex]?.trim() : "";
             const responseTime = responseTimeIndex !== -1 ? parseFloat(values[responseTimeIndex]?.trim()) : 0;
+            const preference = preferenceIndex !== -1 ? values[preferenceIndex]?.trim() : "";
 
             if (listingId && lastName) {
-              const key = `${listingId}-${lastName}`;
+              const key = `${listingId}-${lastName}-${preference}`;
               if (!groups[key]) {
                 groups[key] = {
                   ListingID: listingId,
                   LastName: lastName,
+                  Preference: preference,
                   TargetCount: targetCount,
                   CompletedCount: 0,
                   Rows: []
@@ -115,6 +128,7 @@ export default function CsvUploader({ onUpload, isProcessing }) {
                 ListingID: group.ListingID,
                 Email: baseEmail,
                 LastName: group.LastName,
+                Preference: group.Preference,
                 NumApplications: remaining
               });
             }
@@ -122,7 +136,10 @@ export default function CsvUploader({ onUpload, isProcessing }) {
 
           if (resumeData.length > 0) {
             console.log("Resuming generation:", resumeData);
-            onUpload(resumeData, existingApps);
+            setError("");
+            setFileName(file.name);
+            setExistingApps(existingApps);
+            setRawRows(resumeData);
           } else {
             setError("All applications in this export file have already been generated.");
           }
@@ -134,12 +151,7 @@ export default function CsvUploader({ onUpload, isProcessing }) {
         const emailIndex = headers.findIndex(h => h.toLowerCase().includes("email"));
         const listingIdIndex = headers.findIndex(h => h.toLowerCase().includes("listing id") || h.toLowerCase() === "listingid");
         const numAppsIndex = headers.findIndex(h => h.toLowerCase().includes("num applications") || h.toLowerCase().includes("numapplications"));
-
-        if (emailIndex === -1 || listingIdIndex === -1 || numAppsIndex === -1) {
-          console.error("Missing headers:", { lastNameIndex, emailIndex, listingIdIndex, numAppsIndex, headers });
-          setError("Invalid CSV format. Expected headers: Email, ListingID, NumApplications (LastName optional)");
-          return;
-        }
+        const preferenceIndex = headers.findIndex(h => h.toLowerCase().includes("preference"));
 
         const parsedData = [];
         for (let i = 1; i < lines.length; i++) {
@@ -148,22 +160,30 @@ export default function CsvUploader({ onUpload, isProcessing }) {
 
           const values = currentLine.split(",");
           const lastName = lastNameIndex !== -1 ? values[lastNameIndex]?.trim() : "";
+          const email = emailIndex !== -1 ? values[emailIndex]?.trim() : "";
+          const listingId = listingIdIndex !== -1 ? values[listingIdIndex]?.trim() : "";
+          const numApplications = numAppsIndex !== -1 ? values[numAppsIndex]?.trim() : "";
           const row = {
-            Email: values[emailIndex]?.trim(),
-            ListingID: values[listingIdIndex]?.trim(),
-            NumApplications: values[numAppsIndex]?.trim()
+            ListingID: listingId,
+            NumApplications: numApplications
           };
+
+          // only include Email if it has a value; omitting it lets the backend auto-generate one
+          if (email) {
+            row.Email = email;
+          }
 
           // only include LastName if it has a value
           if (lastName) {
             row.LastName = lastName;
           }
 
-          if (row.Email && row.ListingID && row.NumApplications) {
-            parsedData.push(row);
-          } else {
-            console.warn("Skipping invalid row:", row, "Values:", values);
+          // only include Preference if the column is present; missing column preserves random selection
+          if (preferenceIndex !== -1) {
+            row.Preference = values[preferenceIndex]?.trim() || "None";
           }
+
+          parsedData.push(row);
         }
 
         if (parsedData.length === 0) {
@@ -173,14 +193,16 @@ export default function CsvUploader({ onUpload, isProcessing }) {
 
         console.log("Parsed CSV Data:", parsedData);
         setError("");
-        onUpload(parsedData);
+        setFileName(file.name);
+        setExistingApps([]);
+        setRawRows(parsedData);
       } catch (err) {
         setError("Error parsing CSV file.");
         console.error(err);
       }
     };
     reader.readAsText(file);
-  }, [onUpload]);
+  }, []);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -194,8 +216,40 @@ export default function CsvUploader({ onUpload, isProcessing }) {
     processFile(file);
   }, [processFile]);
 
+  const resolvedRows = useMemo(() => rawRows.map(row => ({
+    ...row,
+    ListingID: row.ListingID || defaultListingId,
+    NumApplications: row.NumApplications || defaultNumApplications,
+  })), [rawRows, defaultListingId, defaultNumApplications]);
+
+  const missingListingCount = resolvedRows.filter(row => !row.ListingID).length;
+  const isReady = resolvedRows.length > 0 && missingListingCount === 0;
+
+  const handleClear = useCallback(() => {
+    setFileName("");
+    setRawRows([]);
+    setExistingApps([]);
+    setError("");
+  }, []);
+
   return (
     <div className="mb-8">
+      <div className="mb-4">
+        <label htmlFor="csv-default-count" className="block text-sm font-semibold text-gray-700 mb-2">
+          Default count (for rows without one)
+        </label>
+        <input
+          type="number"
+          id="csv-default-count"
+          value={defaultNumApplications}
+          onChange={onDefaultNumApplicationsChange}
+          min="1"
+          max="100"
+          disabled={isProcessing}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50"
+        />
+      </div>
+
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -220,13 +274,52 @@ export default function CsvUploader({ onUpload, isProcessing }) {
             </label>
           </p>
           <p className="text-xs text-gray-500">
-            Format: Email, ListingID, NumApplications (LastName optional)
+            Format: NumApplications, Email, ListingID, LastName, Preference all optional
           </p>
         </div>
       </div>
       {error && (
         <div className="mt-2 text-sm text-red-600 bg-red-50 p-2 rounded">
           {error}
+        </div>
+      )}
+
+      {fileName && (
+        <div className="mt-4 space-y-3">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>
+              Loaded {resolvedRows.length} row{resolvedRows.length === 1 ? "" : "s"} from <span className="font-medium">{fileName}</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={isProcessing}
+              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            >
+              Clear
+            </button>
+          </div>
+
+          {missingListingCount > 0 && (
+            <p className="text-sm text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
+              {missingListingCount} row{missingListingCount === 1 ? "" : "s"} missing a ListingID. Select a default listing above to enable generation.
+            </p>
+          )}
+
+          <button
+            onClick={() => onGenerate(resolvedRows, existingApps)}
+            disabled={!isReady || isProcessing}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out transform hover:scale-[1.02] active:scale-[0.98]"
+          >
+            {isProcessing ? "Generating..." : "Generate Applications"}
+          </button>
+          <button
+            onClick={() => onExportDryRun(resolvedRows)}
+            disabled={!isReady || isProcessing}
+            className="w-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 font-semibold py-3 px-6 rounded-lg transition duration-200 ease-in-out"
+          >
+            Save as CSV (dry run)
+          </button>
         </div>
       )}
     </div>
