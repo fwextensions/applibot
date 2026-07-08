@@ -1,0 +1,7 @@
+{
+	"rewrites": [
+		{ "source": "/api-full/:path*", "destination": "https://dahlia-full.herokuapp.com/api/:path*" },
+		{ "source": "/api-prod/:path*", "destination": "https://housing.sfgov.org/api/:path*" },
+		{ "source": "/(.*)", "destination": "/index.html" }
+	]
+}
