@@ -44,7 +44,7 @@ export default function App() {
     <main className="min-h-screen py-12 px-4">
       <section className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
         <h1 className="text-3xl font-bold text-gray-900 font-mono mb-12">
-          🤖 applibot <img src="https://housing.sfgov.org/assets/favicon-96x96-a0efa58fa4aecb817d51b35dad3b9ee0b60dbf4a9c6e63aeade28fcd68279181.png" alt="DAHLIA logo" className="inline-block w-[32px] h-[32px] mt-[-4px]" />
+          <img src="https://housing.sfgov.org/assets/favicon-96x96-a0efa58fa4aecb817d51b35dad3b9ee0b60dbf4a9c6e63aeade28fcd68279181.png" alt="DAHLIA logo" className="inline-block w-[32px] h-[32px] mt-[-4px]" /> applibot 🤖
         </h1>
 
         <ServerSelector
