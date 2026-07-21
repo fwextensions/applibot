@@ -137,6 +137,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				}
 				appsByListing[row.ListingID].push({
 					firstName: row.FirstName,
+					middleName: row.MiddleName,
 					lastName: row.LastName,
 					email: row.Email,
 					numApplications: parseInt(row.NumApplications, 10) || 1,
@@ -181,6 +182,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 							const startTime = performance.now();
 							const result = await submitApplication(listingId, preferences, {
 								firstName: row.firstName,
+								middleName: row.middleName,
 								lastName: row.lastName,
 								email: row.email,
 								preference: row.preference,
@@ -317,6 +319,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				}
 				appsByListing[row.ListingID].push({
 					firstName: row.FirstName,
+					middleName: row.MiddleName,
 					lastName: row.LastName,
 					email: row.Email,
 					numApplications: parseInt(row.NumApplications, 10) || 1,
@@ -350,6 +353,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 						const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, {
 							firstName: row.firstName,
+							middleName: row.middleName,
 							lastName: row.lastName,
 							email: row.email,
 							preference: row.preference,
@@ -482,6 +486,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 				}
 				appsByListing[row.ListingID].push({
 					firstName: row.FirstName,
+					middleName: row.MiddleName,
 					lastName: row.LastName,
 					email: row.Email,
 					numApplications: parseInt(row.NumApplications, 10) || 1,
@@ -515,6 +520,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 						const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, {
 							firstName: row.firstName,
+							middleName: row.middleName,
 							lastName: row.lastName,
 							email: row.email,
 							preference: row.preference,

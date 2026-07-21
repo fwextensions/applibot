@@ -13,6 +13,10 @@ const VALID_RECORD_TYPES = new Set([
 ]);
 
 const PREFERENCE_NAME_MAP = {
+	"Right to Return Preference (RtR)": "RtR",
+	"Right to Return Preference": "RtR",
+	"Rent Burden Preference (RB)": "RB",
+	"Rent Burden Preference": "RB",
 	"Veteran with Certificate of Preference (V-COP)": "V-COP",
 	"Veteran with Certificate of Preference": "V-COP",
 	"Certificate of Preference (COP)": "COP",
@@ -37,7 +41,7 @@ const PREFERENCE_NAME_MAP = {
 };
 
 function getDevNameFromPreferenceName(preferenceName) {
-	return PREFERENCE_NAME_MAP[preferenceName] || "Custom";
+	return PREFERENCE_NAME_MAP[preferenceName] || preferenceName;
 }
 
 function generateSessionId() {
@@ -69,7 +73,10 @@ export async function getLotteryBuckets(listingId, server = DEFAULT_SERVER) {
 
 export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
-	const prefsResponse = await fetch(`${apiPath}/v1/listings/${listingId}/preferences`);
+	const [prefsResponse, lotteryBuckets] = await Promise.all([
+		fetch(`${apiPath}/v1/listings/${listingId}/preferences`),
+		getLotteryBuckets(listingId, server),
+	]);
 
 	if (!prefsResponse.ok) {
 		throw new Error(`Failed to fetch preferences: ${prefsResponse.status}`);
@@ -84,7 +91,9 @@ export async function getPreferences(listingId, server = DEFAULT_SERVER) {
 	return data.preferences.map((preference) => ({
 		listingPreferenceID: preference.listingPreferenceID,
 		preferenceName: preference.preferenceName,
-		devName: getDevNameFromPreferenceName(preference.preferenceName),
+		devName: PREFERENCE_NAME_MAP[preference.preferenceName]
+			|| lotteryBuckets[preference.preferenceName]
+			|| preference.preferenceName,
 	}));
 }
 
@@ -195,6 +204,30 @@ export function buildShortFormPreferences(preferences, claimedIndex = undefined,
 	});
 }
 
+const PREFERENCE_ALIASES = {
+	"COP-V": "V-COP",
+	"DTHP-V": "V-DTHP",
+	"LW": "L_W",
+	"LW-V": "V-L_W",
+};
+
+const PREFERENCE_NAME_PREFIX_ALIASES = {
+	"RB": "rent burden",
+	"RTR": "right to return",
+};
+
+function resolvePreferenceDevName(requestedPreference, preferences) {
+	const requested = String(requestedPreference).trim();
+	const normalizedRequested = requested.toUpperCase();
+	const candidate = PREFERENCE_ALIASES[normalizedRequested] || requested;
+	const preferenceNamePrefix = PREFERENCE_NAME_PREFIX_ALIASES[normalizedRequested];
+	return preferences.find((preference) =>
+		preference.devName.toLowerCase() === candidate.toLowerCase()
+		|| preference.preferenceName.toLowerCase() === requested.toLowerCase()
+		|| (preferenceNamePrefix && preference.preferenceName.toLowerCase().startsWith(preferenceNamePrefix))
+	)?.devName;
+}
+
 export function buildApplicationPayload(listingId, preferences, overrides = {}) {
 	const altContactPercent = overrides.altContactPercent ?? 33;
 	const noEmailPercent = overrides.noEmailPercent ?? 5;
@@ -225,17 +258,18 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 		const requested = String(overrides.preference).trim();
 		if (requested === "" || requested.toLowerCase() === "none") {
 			explicitDevName = null;
-		} else if (preferences.some(p => p.devName === requested)) {
-			explicitDevName = requested;
 		} else {
-			throw new Error(`Preference "${requested}" is not available on listing ${listingId}`);
+			explicitDevName = resolvePreferenceDevName(requested, preferences);
+			if (!explicitDevName) {
+				throw new Error(`Preference "${requested}" is not available on listing ${listingId}`);
+			}
 		}
 	}
 
 	const primaryApplicant = {
 		email: isPhoneOnly ? "" : email,
 		firstName,
-		middleName: new Date().toISOString(),
+		middleName: overrides.middleName || new Date().toISOString(),
 		lastName,
 		noPhone: !isPhoneOnly,
 		phone: isPhoneOnly ? faker.phone.number({ style: "national" }) : null,
@@ -324,4 +358,4 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 	return { payload, applicantDetails: { firstName, lastName, email, listingId } };
 }
 
-export { getDevNameFromPreferenceName, generateEmail, generateSessionId };
+export { getDevNameFromPreferenceName, generateEmail, generateSessionId, resolvePreferenceDevName };

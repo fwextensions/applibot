@@ -53,6 +53,7 @@ export default function CsvUploader({
           const emailIndex = headers.indexOf("Email");
           const lastNameIndex = headers.indexOf("Last Name");
           const firstNameIndex = headers.indexOf("First Name");
+        const middleNameIndex = headers.findIndex(h => h.toLowerCase().includes("middle name") || h.toLowerCase() === "middlename");
           const targetCountIndex = headers.indexOf("Target Count");
           const appIdIndex = headers.findIndex(h => h.toLowerCase().includes("application id"));
           const responseTimeIndex = headers.findIndex(h => h.toLowerCase().includes("response time"));
@@ -70,6 +71,7 @@ export default function CsvUploader({
             const email = values[emailIndex]?.trim();
             const lastName = values[lastNameIndex]?.trim();
             const firstName = firstNameIndex !== -1 ? values[firstNameIndex]?.trim() : "";
+          const middleName = middleNameIndex !== -1 ? values[middleNameIndex]?.trim() : "";
             const targetCount = parseInt(values[targetCountIndex]?.trim(), 10) || 0;
             const appId = appIdIndex !== -1 ? values[appIdIndex]?.trim() : "";
             const responseTime = responseTimeIndex !== -1 ? parseFloat(values[responseTimeIndex]?.trim()) : 0;
@@ -149,6 +151,7 @@ export default function CsvUploader({
 
         // Standard CSV parsing
         const firstNameIndex = headers.findIndex(h => h.toLowerCase().includes("first name") || h.toLowerCase() === "firstname");
+        const middleNameIndex = headers.findIndex(h => h.toLowerCase().includes("middle name") || h.toLowerCase() === "middlename");
         const lastNameIndex = headers.findIndex(h => h.toLowerCase().includes("last name") || h.toLowerCase() === "lastname");
         const emailIndex = headers.findIndex(h => h.toLowerCase().includes("email"));
         const listingIdIndex = headers.findIndex(h => h.toLowerCase().includes("listing id") || h.toLowerCase() === "listingid");
@@ -162,6 +165,7 @@ export default function CsvUploader({
 
           const values = currentLine.split(",");
           const firstName = firstNameIndex !== -1 ? values[firstNameIndex]?.trim() : "";
+          const middleName = middleNameIndex !== -1 ? values[middleNameIndex]?.trim() : "";
           const lastName = lastNameIndex !== -1 ? values[lastNameIndex]?.trim() : "";
           const email = emailIndex !== -1 ? values[emailIndex]?.trim() : "";
           const listingId = listingIdIndex !== -1 ? values[listingIdIndex]?.trim() : "";
@@ -179,6 +183,10 @@ export default function CsvUploader({
           // only include FirstName if it has a value
           if (firstName) {
             row.FirstName = firstName;
+          }
+
+          if (middleName) {
+            row.MiddleName = middleName;
           }
 
           // only include LastName if it has a value
@@ -282,7 +290,7 @@ export default function CsvUploader({
             </label>
           </p>
           <p className="text-xs text-gray-500">
-            Format: NumApplications, Email, ListingID, LastName, Preference all optional
+            Format: NumApplications, Email, ListingID, FirstName, MiddleName, LastName, Preference all optional
           </p>
         </div>
       </div>
