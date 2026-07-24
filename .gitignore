@@ -109,5 +109,8 @@ To do.md
 *.csv
 scripts/
 
+# build output
+dist/
+
 .vercel
 .env*.local

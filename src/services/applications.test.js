@@ -62,6 +62,33 @@ test("claims only the requested custom preference", () => {
 	}]);
 });
 
+test("links a claimed preference to the applicant via naturalKey", () => {
+	const result = buildShortFormPreferences(preferences, undefined, {
+		claimedDevName: "RtR",
+		naturalKey: "Jane,Doe,1980-01-01",
+	});
+	const claimed = result.filter((preference) => !preference.optOut);
+	assert.equal(claimed.length, 1);
+	assert.equal(claimed[0].naturalKey, "Jane,Doe,1980-01-01");
+	// opted-out preferences carry no member link
+	assert.ok(result.filter((preference) => preference.optOut).every((preference) => !("naturalKey" in preference)));
+});
+
+test("buildApplicationPayload sets naturalKey on the claimed preference", () => {
+	const { payload } = buildApplicationPayload("listing-id", preferences, {
+		preference: "RtR",
+		firstName: "Jane",
+		lastName: "Doe",
+		altContactPercent: 0,
+		noEmailPercent: 0,
+	});
+	const claimed = payload.application.shortFormPreferences.filter((preference) => !preference.optOut);
+	assert.equal(claimed.length, 1);
+	const { firstName, lastName } = payload.application.primaryApplicant;
+	const dob = payload.application.primaryApplicant.dob;
+	assert.equal(claimed[0].naturalKey, `${firstName},${lastName},${dob}`);
+});
+
 test("uses a supplied middle name instead of a timestamp", () => {
 	const { payload } = buildApplicationPayload("listing-id", preferences, {
 		middleName: "Quincy",

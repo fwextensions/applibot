@@ -159,8 +159,9 @@ const PREFERENCE_IMPLICATIONS = {
  * @param {boolean} options.forceLW - If true, force L_W preferences to be opted in (e.g. for SFUSD employees)
  * @param {string} options.tier - If set, only preferences in this tier are eligible for claiming. "tier1" or "non-tier1".
  * @param {string} options.claimedDevName - If set, explicitly claims this devName (e.g. "COP", "V-COP") instead of using claimedIndex/tier. Pass null/"" to claim nothing.
+ * @param {string} options.naturalKey - Identifies the household member claiming the preference, formatted "firstName,lastName,YYYY-MM-DD". Set on every claimed (non-opted-out) preference so Salesforce can associate it with the applicant. Without it a preference is submitted with no member attached and does not process correctly.
  */
-export function buildShortFormPreferences(preferences, claimedIndex = undefined, { forceLW = false, tier = null, claimedDevName: explicitDevName = undefined } = {}) {
+export function buildShortFormPreferences(preferences, claimedIndex = undefined, { forceLW = false, tier = null, claimedDevName: explicitDevName = undefined, naturalKey = null } = {}) {
 	let claimedDevName;
 	if (explicitDevName !== undefined) {
 		// an explicit devName (e.g. from a CSV "Preference" column) skips the tier/index logic entirely
@@ -200,6 +201,12 @@ export function buildShortFormPreferences(preferences, claimedIndex = undefined,
 		const isClaimedOrImplied = claimedSet.has(preference.devName);
 		const isForcedLW = forceLW && isLW;
 		pref.optOut = !(isClaimedOrImplied || isForcedLW);
+		// A claimed preference must be linked to the applicant via naturalKey, mirroring the
+		// real short form (ShortFormDataService._formatPreferences sets naturalKey only when
+		// not opted out). Opted-out prefs carry no member link.
+		if (!pref.optOut && naturalKey) {
+			pref.naturalKey = naturalKey;
+		}
 		return pref;
 	});
 }
@@ -350,6 +357,9 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 					forceLW: isSFUSD,
 					tier: isSFUSD ? "tier1" : (listingId === "a0Wbb000002L0YXEA0" ? "non-tier1" : null),
 					claimedDevName: explicitDevName,
+					// Links claimed preferences to the primary applicant. Matches the real form's
+					// "firstName,lastName,YYYY-MM-DD" naturalKey (dob is already YYYY-MM-DD).
+					naturalKey: `${firstName},${lastName},${dob}`,
 				},
 			),
 		},
