@@ -108,6 +108,32 @@ test("generates a timestamp when no middle name is supplied", () => {
 	assert.equal(Number.isNaN(Date.parse(payload.application.primaryApplicant.middleName)), false);
 });
 
+test("generateExtras=false skips auto-generated email, dob, and alternate contact", () => {
+	const { payload } = buildApplicationPayload("listing-id", preferences, {
+		preference: "None",
+		firstName: "Jane",
+		lastName: "Doe",
+		altContactPercent: 100,
+		noEmailPercent: 0,
+		generateExtras: false,
+	});
+	assert.equal(payload.application.primaryApplicant.email, "");
+	assert.equal(payload.application.primaryApplicant.dob, "");
+	assert.equal(payload.application.alternateContact, null);
+});
+
+test("generateExtras=false preserves a CSV-supplied email as-is", () => {
+	const { payload, applicantDetails } = buildApplicationPayload("listing-id", preferences, {
+		preference: "None",
+		email: "applicant@example.com",
+		altContactPercent: 0,
+		noEmailPercent: 0,
+		generateExtras: false,
+	});
+	assert.equal(payload.application.primaryApplicant.email, "applicant@example.com");
+	assert.equal(applicantDetails.email, "applicant@example.com");
+});
+
 test("builds an RtR payload from the CSV alias", () => {
 	const { payload } = buildApplicationPayload("listing-id", preferences, {
 		preference: "RtR",

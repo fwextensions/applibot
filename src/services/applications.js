@@ -238,22 +238,25 @@ function resolvePreferenceDevName(requestedPreference, preferences) {
 export function buildApplicationPayload(listingId, preferences, overrides = {}) {
 	const altContactPercent = overrides.altContactPercent ?? 33;
 	const noEmailPercent = overrides.noEmailPercent ?? 5;
+	const generateExtras = overrides.generateExtras ?? true;
 
 	const sessionId1 = generateSessionId();
 	const sessionId2 = generateSessionId();
 	const externalSessionId = `${sessionId1}-${sessionId2}`;
 
-	const baseEmail = overrides.email || generateEmail();
+	const baseEmail = overrides.email || (generateExtras ? generateEmail() : "");
 	const firstName = overrides.firstName || faker.person.firstName();
 	const lastName = overrides.lastName || faker.person.lastName();
 
 	const emailParts = baseEmail.split("@");
-	const email = emailParts.length === 2
+	const email = generateExtras && emailParts.length === 2
 		? `${emailParts[0]}+${firstName}@${emailParts[1]}`
 		: baseEmail;
 
-	const dob = faker.date.birthdate({ min: 21, max: 80, mode: "age" }).toISOString().split("T")[0];
-	const isPhoneOnly = Math.random() < (noEmailPercent / 100);
+	const dob = generateExtras
+		? faker.date.birthdate({ min: 21, max: 80, mode: "age" }).toISOString().split("T")[0]
+		: (overrides.dob || "");
+	const isPhoneOnly = generateExtras && Math.random() < (noEmailPercent / 100);
 
 	// For listing a0Wbb000002L0YXEA0, 50% of applicants are SFUSD employees
 	const isSFUSD = listingId === "a0Wbb000002L0YXEA0" && Math.random() < 0.5;
@@ -318,7 +321,7 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 			householdVouchersSubsidies: false,
 			monthlyIncome: 6000,
 			totalMonthlyRent: 0,
-			alternateContact: Math.random() < (altContactPercent / 100) ? {
+			alternateContact: generateExtras && Math.random() < (altContactPercent / 100) ? {
 				appMemberId: null,
 				alternateContactType: "Friend",
 				alternateContactTypeOther: "",

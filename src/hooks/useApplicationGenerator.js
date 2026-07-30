@@ -28,6 +28,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 	const [server, setServer] = useState(DEFAULT_SERVER);
 	const [altContactPercent, setAltContactPercent] = useState(33);
 	const [noEmailPercent, setNoEmailPercent] = useState(5);
+	const [generateExtras, setGenerateExtras] = useState(false);
 	const [dryRunRows, setDryRunRows] = useState([]);
 	const cancelRef = useRef(false);
 
@@ -81,7 +82,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 				try {
 					const startTime = performance.now();
-					const result = await submitApplication(listingId, preferences, { altContactPercent, noEmailPercent }, server);
+					const result = await submitApplication(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras }, server);
 					const endTime = performance.now();
 					successCount += 1;
 
@@ -111,7 +112,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			setIsGenerating(false);
 			cancelRef.current = false;
 		}
-	}, [isGenerating, listingId, numApplications, currentListingId, showStatus, server, altContactPercent, noEmailPercent]);
+	}, [isGenerating, listingId, numApplications, currentListingId, showStatus, server, altContactPercent, noEmailPercent, generateExtras]);
 
 	const processCsvData = useCallback(async (csvData, existingApps = []) => {
 		console.log("Processing CSV Data:", csvData);
@@ -187,7 +188,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 								email: row.email,
 								preference: row.preference,
 								altContactPercent,
-								noEmailPercent
+								noEmailPercent,
+								generateExtras
 							}, server);
 							const endTime = performance.now();
 							successCount++;
@@ -229,7 +231,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			setIsGenerating(false);
 			cancelRef.current = false;
 		}
-	}, [isGenerating, showStatus, server, altContactPercent, noEmailPercent]);
+	}, [isGenerating, showStatus, server, altContactPercent, noEmailPercent, generateExtras]);
 
 	const handleExportCsv = useCallback(async () => {
 		if (isGenerating) return;
@@ -262,7 +264,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 					break;
 				}
 
-				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent });
+				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras });
 				const claimedPrefs = payload.application.shortFormPreferences
 					.filter(p => !p.optOut)
 					.map(p => p.recordTypeDevName === "Custom"
@@ -297,7 +299,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			setIsGenerating(false);
 			cancelRef.current = false;
 		}
-	}, [isGenerating, listingId, numApplications, server, altContactPercent, noEmailPercent, showStatus]);
+	}, [isGenerating, listingId, numApplications, server, altContactPercent, noEmailPercent, generateExtras, showStatus]);
 
 	const exportCsvDryRun = useCallback(async (csvData) => {
 		if (isGenerating) return;
@@ -358,7 +360,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 							email: row.email,
 							preference: row.preference,
 							altContactPercent,
-							noEmailPercent
+							noEmailPercent,
+							generateExtras
 						});
 						const claimedPrefs = payload.application.shortFormPreferences
 							.filter(p => !p.optOut)
@@ -397,7 +400,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			setIsGenerating(false);
 			cancelRef.current = false;
 		}
-	}, [isGenerating, server, altContactPercent, noEmailPercent, showStatus]);
+	}, [isGenerating, server, altContactPercent, noEmailPercent, generateExtras, showStatus]);
 
 	const previewDryRun = useCallback(async () => {
 		if (isGenerating) return;
@@ -431,7 +434,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 					break;
 				}
 
-				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent });
+				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras });
 				const claimedPrefs = payload.application.shortFormPreferences
 					.filter(p => !p.optOut)
 					.map(p => p.recordTypeDevName === "Custom"
@@ -463,7 +466,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			setIsGenerating(false);
 			cancelRef.current = false;
 		}
-	}, [isGenerating, listingId, numApplications, server, altContactPercent, noEmailPercent, showStatus]);
+	}, [isGenerating, listingId, numApplications, server, altContactPercent, noEmailPercent, generateExtras, showStatus]);
 
 	const previewCsvDryRun = useCallback(async (csvData) => {
 		if (isGenerating) return;
@@ -525,7 +528,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 							email: row.email,
 							preference: row.preference,
 							altContactPercent,
-							noEmailPercent
+							noEmailPercent,
+							generateExtras
 						});
 						const claimedPrefs = payload.application.shortFormPreferences
 							.filter(p => !p.optOut)
@@ -562,7 +566,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			setIsGenerating(false);
 			cancelRef.current = false;
 		}
-	}, [isGenerating, server, altContactPercent, noEmailPercent, showStatus]);
+	}, [isGenerating, server, altContactPercent, noEmailPercent, generateExtras, showStatus]);
 
 	return {
 		listingId,
@@ -585,6 +589,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		altContactPercent,
 		setAltContactPercent,
 		noEmailPercent,
-		setNoEmailPercent
+		setNoEmailPercent,
+		generateExtras,
+		setGenerateExtras
 	};
 }

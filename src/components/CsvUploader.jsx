@@ -8,6 +8,8 @@ export default function CsvUploader({
   defaultListingId = "",
   defaultNumApplications = 1,
   onDefaultNumApplicationsChange,
+  generateExtras,
+  onGenerateExtrasChange,
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState("");
@@ -265,6 +267,17 @@ export default function CsvUploader({
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition disabled:opacity-50"
         />
       </div>
+
+      <label className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-700">
+        <input
+          type="checkbox"
+          checked={generateExtras}
+          onChange={onGenerateExtrasChange}
+          disabled={isProcessing}
+          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        Generate email, DOB &amp; alternate contact
+      </label>
 
       <div
         onDragOver={handleDragOver}

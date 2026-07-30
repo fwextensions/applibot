@@ -37,7 +37,9 @@ export default function App() {
     altContactPercent,
     setAltContactPercent,
     noEmailPercent,
-    setNoEmailPercent
+    setNoEmailPercent,
+    generateExtras,
+    setGenerateExtras
   } = useApplicationGenerator();
 
   return (
@@ -83,6 +85,8 @@ export default function App() {
               defaultListingId={listingId}
               defaultNumApplications={numApplications}
               onDefaultNumApplicationsChange={(event) => setNumApplications(parseInt(event.target.value) || 1)}
+              generateExtras={generateExtras}
+              onGenerateExtrasChange={(event) => setGenerateExtras(event.target.checked)}
             />
           </>
         ) : (
@@ -105,6 +109,8 @@ export default function App() {
               onSubmit={handleGenerateApplications}
               onExportCsv={handleExportCsv}
               onPreviewDryRun={previewDryRun}
+              generateExtras={generateExtras}
+              onGenerateExtrasChange={(event) => setGenerateExtras(event.target.checked)}
             />
           </>
         )}
