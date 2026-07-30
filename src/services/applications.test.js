@@ -118,7 +118,7 @@ test("generateExtras=false skips auto-generated email, dob, and alternate contac
 		generateExtras: false,
 	});
 	assert.equal(payload.application.primaryApplicant.email, "");
-	assert.equal(payload.application.primaryApplicant.dob, "");
+	assert.equal(payload.application.primaryApplicant.dob, "1900-01-01");
 	assert.equal(payload.application.alternateContact, null);
 });
 

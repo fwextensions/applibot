@@ -255,7 +255,7 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 
 	const dob = generateExtras
 		? faker.date.birthdate({ min: 21, max: 80, mode: "age" }).toISOString().split("T")[0]
-		: (overrides.dob || "");
+		: (overrides.dob || "1900-01-01");
 	const isPhoneOnly = generateExtras && Math.random() < (noEmailPercent / 100);
 
 	// For listing a0Wbb000002L0YXEA0, 50% of applicants are SFUSD employees
