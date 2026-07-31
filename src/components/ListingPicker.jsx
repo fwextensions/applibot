@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { fetchListings, filterPreLotteryListings } from '../services/listings';
+import { fetchListings, filterPreLotteryListings, groupListingsByTenure } from '../services/listings';
 import { SERVERS } from '../services/applications';
 
 /**
@@ -194,10 +194,14 @@ export default function ListingPicker({
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white"
             >
               <option value="">Select a listing...</option>
-              {listings.map((listing) => (
-                <option key={listing.Id} value={listing.Id}>
-                  {listing.Name}
-                </option>
+              {groupListingsByTenure(listings).map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.listings.map((listing) => (
+                    <option key={listing.Id} value={listing.Id}>
+                      {listing.Name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           )}

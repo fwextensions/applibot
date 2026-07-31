@@ -56,6 +56,48 @@ function generateEmail() {
 	return "dahlia.internal@gmail.com";
 }
 
+// Homebuyer education agencies offered on the sale short form.
+// Mirrors the `agencies` list in sf-dahlia-web's educationAgency component.
+export const HOMEBUYER_EDUCATION_AGENCIES = [
+	"ASIAN Inc.",
+	"BALANCE",
+	"Mission Economic Development Agency",
+	"San Francisco Housing Development Corporation",
+	"San Francisco LGBT Community Center",
+];
+
+// Cache of server key -> flat array of lending agents.
+const lendingAgentCache = new Map();
+
+/**
+ * Fetches MOHCD-approved loan officers, flattened across institutions. Sale applications
+ * reference one by Salesforce contact Id via `lendingAgent`, so the IDs are server-specific.
+ * @param {string} server - Server key ('full' or 'prod')
+ * @returns {Promise<Array<{Id: string, FirstName: string, LastName: string, Status: string}>>}
+ */
+export async function getLendingAgents(server = DEFAULT_SERVER) {
+	if (lendingAgentCache.has(server)) {
+		return lendingAgentCache.get(server);
+	}
+
+	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
+	let agents = [];
+	try {
+		const response = await fetch(`${apiPath}/v1/short-form/lending_institutions`);
+		if (response.ok) {
+			const data = await response.json();
+			agents = Object.values(data || {})
+				.flat()
+				.filter((agent) => agent?.Id && agent.Status === "Active" && !agent.Lending_Agent_Inactive_Date);
+		}
+	} catch (error) {
+		console.warn("Could not fetch lending institutions; sale applications will omit lendingAgent.", error);
+	}
+
+	lendingAgentCache.set(server, agents);
+	return agents;
+}
+
 export async function getLotteryBuckets(listingId, server = DEFAULT_SERVER) {
 	const apiPath = SERVERS[server]?.apiPath || SERVERS[DEFAULT_SERVER].apiPath;
 	const response = await fetch(`${apiPath}/v1/listings/${listingId}/lottery_buckets`);
@@ -303,12 +345,31 @@ export function buildApplicationPayload(listingId, preferences, overrides = {}) 
 		jobClassification: isSFUSD ? String(faker.number.int({ min: 100000000, max: 999999999 })) : null,
 	};
 
+	// Sale (ownership) listings gate the short form behind a Prerequisites page that rentals
+	// don't have: first-time homebuyer, 10 hours of homebuyer education (plus the agency that
+	// provided it), and mortgage pre-approval from a MOHCD-approved loan officer.
+	// See sf-dahlia-web short-form/templates/b0a-prerequisites.html.slim.
+	const saleFields = overrides.isSale
+		? {
+			isFirstTimeHomebuyer: true,
+			hasCompletedHomebuyerEducation: true,
+			homebuyerEducationAgency: overrides.homebuyerEducationAgency
+				|| faker.helpers.arrayElement(HOMEBUYER_EDUCATION_AGENCIES),
+			hasLoanPreapproval: true,
+			lendingAgent: overrides.lendingAgent
+				?? (overrides.lendingAgents?.length
+					? faker.helpers.arrayElement(overrides.lendingAgents).Id
+					: null),
+		}
+		: {};
+
 	const payload = {
 		locale: "en",
 		uploaded_file: { session_uid: externalSessionId },
 		application: {
 			id: null,
 			applicationLanguage: "English",
+			...saleFields,
 			applicationSubmittedDate: new Date().toISOString().split("T")[0],
 			applicationSubmissionType: "Electronic",
 			status: "submitted",

@@ -4,132 +4,178 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is the **Dahlia Application Generator** - a testing/development tool that generates housing applications for the Dahlia housing portal (San Francisco's affordable housing application system). Built with React 19, Tailwind CSS v4, and Vite for a modern development experience.
+**Applibot** (the Dahlia Application Generator) is a testing/development tool that generates
+housing applications for DAHLIA, San Francisco's affordable housing portal. It submits real
+applications to a DAHLIA backend, so treat every run as a write against shared test data.
 
-## Architecture
+Supports both **rental** and **sale (ownership)** listings.
 
-### Tech Stack
-- **Framework**: React 19 (RC)
-- **Styling**: Tailwind CSS v4 (beta)
-- **Build Tool**: Vite 7 with React and Tailwind plugins
-- **Dependencies**: `@faker-js/faker` for generating realistic test data
+## Tech Stack
 
-### Frontend Application Structure
-- **Entry Point**: `index.html` → `src/main.jsx` → `src/App.jsx`
-- **Styling**: `src/index.css` (imports Tailwind CSS)
-- **Components**: Single-page application with React hooks for state management
-
-### Application Logic (`src/App.jsx`)
-The React application:
-- Uses React hooks (`useState`) for state management
-- Fetches preferences for a listing using `/api/v1/listings/{listingId}/preferences`
-- Generates unique test applications with:
-  - Random first/last names via faker.js
-  - Unique session IDs (UUID format)
-  - Timestamped email addresses (`dahlia.internal+{timestamp}@gmail.com`)
-  - ISO timestamp as middle name for uniqueness tracking
-  - Fixed test applicant data (DOB, address at 1 S VAN NESS AVE)
-- Maps San Francisco housing preferences to their developer names:
-  - Certificate of Preference (COP, V-COP)
-  - Displaced Tenant Housing Preference (DTHP, V-DTHP)
-  - Neighborhood Resident Housing Preference (NRHP, V-NRHP)
-  - Live or Work in San Francisco (L_W, V-L_W)
-- Submits applications via POST to `/api/v1/short-form/application`
-- Batches submissions with 500ms delay between each to avoid overwhelming the server
-- Modern UI with Tailwind CSS utility classes for styling
-
-### Vite Configuration (`vite.config.js`)
-- **Plugins**:
-  - `@vitejs/plugin-react` - Enables React Fast Refresh and JSX transformation
-  - `@tailwindcss/vite` - Tailwind CSS v4 integration with Vite
-- **Dev Server**: Runs on port 3000 by default with automatic fallback if port is in use (`strictPort: false`)
-- **Proxy**: All `/api/*` requests are proxied to `https://dahlia-full.herokuapp.com`
-  - `changeOrigin: true` for proper host headers
-  - `secure: true` for HTTPS validation
-- This eliminates the need for a separate proxy server (though `server.js` still exists for standalone use)
-
-### Tailwind CSS Setup
-- **Version**: v4 (beta) - installed with `--legacy-peer-deps` due to Vite 7 compatibility
-- **Configuration**: Uses the new `@import "tailwindcss"` syntax in `src/index.css`
-- **No config file needed**: Tailwind v4 uses CSS-based configuration
-
-## Running the Application
-
-**Development mode (recommended):**
-```bash
-npm run dev
-```
-This starts the Vite dev server with HMR on port 3000 (or next available port). The API proxy is automatically configured.
-
-**Other commands:**
-- `npm run build` - Build for production (outputs to `dist/`)
-- `npm run preview` - Preview production build locally
-- `npm run server` - Run standalone proxy server (legacy, not needed with Vite)
-
-## Development Workflow
-
-1. Start the dev server: `npm run dev`
-2. Open the URL shown in terminal (typically `http://localhost:3000`)
-3. Make code changes - Vite will hot-reload automatically
-4. Configure the application:
-   - **Listing ID**: Enter a Dahlia listing ID (e.g., `a0Wbb000001JZxZEAW`)
-   - **Number of Applications**: How many test applications to generate
-
-## Key Technical Details
-
-### Application Payload Structure
-Applications submitted to Dahlia require:
-- `externalSessionId`: Combination of two UUIDs (format: `{uuid1}-{uuid2}`)
-- `applicationSubmittedDate`: Current date in YYYY-MM-DD format
-- `primaryApplicant`: Object with contact info, address, and preference matching data
-- `shortFormPreferences`: Array of preference objects with `listingPreferenceID` and `recordTypeDevName`
-- `formMetadata`: JSON string containing completed sections and session info
-- GIS coordinates for address validation (`xCoordinate`, `yCoordinate`, `candidateScore`)
-
-### Preference Handling
-- Live/Work preferences require additional fields: `individualPreference: "Live in SF"` and `optOut: true`
-- Each preference has a `listingPreferenceID` (unique per listing) and `recordTypeDevName` (preference type code)
-- The mapping in `PREFERENCE_NAME_MAP` converts human-readable preference names to developer codes
-
-### Test Data Generation
-All applications use:
-- **Name**: Random first/last names generated by faker.js, with ISO timestamp as middle name for uniqueness
-- **Email**: `dahlia.internal+{timestamp}@gmail.com` (unique per application)
-- **DOB**: 1990-01-01 (fixed)
-- **Address**: 1 S VAN NESS AVE APT A, San Francisco, CA 94103-1267 (fixed)
-- **Income**: $4,000 monthly (fixed)
-- **Phone**: No phone number (noPhone: true)
+- **React 19** with hooks, no state library
+- **Tailwind CSS v4** (CSS-based config via `@import "tailwindcss"` in `src/index.css`; no config file)
+- **Vite 8** for dev server and build
+- **@faker-js/faker** for realistic applicant data
+- **node:test** for unit tests
 
 ## Project Structure
 
 ```
 applibot/
+├── index.html                  # Entry HTML with #root
 ├── src/
-│   ├── App.jsx      # Main React component with application logic
-│   ├── main.jsx     # React entry point (renders App to DOM)
-│   ├── index.css    # Tailwind CSS imports
-│   ├── main.js      # Legacy vanilla JS (replaced by App.jsx)
-│   └── style.css    # Legacy styles (replaced by index.css)
-├── index.html       # HTML entry file with root div
-├── vite.config.js   # Vite configuration with React, Tailwind, and proxy
-├── package.json     # Dependencies and scripts
-├── server.js        # Legacy standalone proxy (not needed with Vite)
-├── app.js           # Legacy app file (replaced by src/App.jsx)
-├── styles.css       # Legacy styles (replaced by src/index.css)
-├── test.js          # Raw fetch requests from browser DevTools
-└── test.json        # HAR file with recorded network traffic
+│   ├── main.jsx                # React entry point
+│   ├── App.jsx                 # Layout + tab switching; delegates all logic to the hook
+│   ├── index.css               # Tailwind import
+│   ├── hooks/
+│   │   └── useApplicationGenerator.js   # All generation/export/preview flows and state
+│   ├── services/
+│   │   ├── applications.js              # Payload construction, preferences, submission
+│   │   ├── applications.test.js         # Unit tests for payload + preference logic
+│   │   └── listings.js                  # Listing fetch, tenure helpers, grouping
+│   └── components/             # Presentational components (forms, picker, tables, banners)
+├── bin/cli.js                  # `applibot` CLI: starts dev server and opens a browser
+├── scripts/                    # One-off analysis scripts (preference combos, response times)
+├── middleware.js               # Vercel Edge Middleware password gate
+├── vercel.json                 # Production API rewrites + SPA fallback
+└── vite.config.js              # React/Tailwind plugins + dev API proxy
 ```
 
-## Legacy Files (Not Used in Current Setup)
+## Commands
 
-The following files are legacy code from previous iterations and are not used in the current React + Tailwind + Vite setup:
+- `npm run dev` — Vite dev server with HMR and the API proxy
+- `npm start` — same, but also opens a browser (via `bin/cli.js`)
+- `npm run build` — production build to `dist/`
+- `npm run preview` — preview the production build
+- `node src/services/applications.test.js` — run unit tests (there is no `test` script)
 
-- `app.js`: Original vanilla JS application logic (replaced by `src/App.jsx`)
-- `src/main.js`: Vanilla JS entry point (replaced by `src/main.jsx`)
-- `styles.css`, `src/style.css`: Legacy CSS files (replaced by `src/index.css` with Tailwind)
-- `server.js`: Standalone proxy server (Vite's built-in proxy handles this now)
+Never run `npm run dev` as a blocking foreground command in an agent session; it does not exit.
 
-## Reference Files
+## Server Targeting
 
-- `test.js`: Contains raw fetch requests copied from browser DevTools (network traffic capture)
-- `test.json`: HAR (HTTP Archive) file with recorded network traffic for debugging/reference
+Two backends are selectable in the UI, keyed as `full` and `prod` in `SERVERS`
+(`src/services/applications.js`). Requests use a `/api-full` or `/api-prod` prefix that is
+rewritten to the target's `/api` path:
+
+| Key    | Target                              | Prefix      |
+| ------ | ----------------------------------- | ----------- |
+| `full` | `https://dahlia-full.herokuapp.com` | `/api-full` |
+| `prod` | `https://housing.sfgov.org`         | `/api-prod` |
+
+`full` is the default. In dev the rewrite is Vite's proxy (`vite.config.js`); in production it is
+Vercel's rewrites (`vercel.json`). `SERVERS[key].baseUrl` is the public site URL, used only for
+building human-facing listing links.
+
+## Listings and Tenure
+
+`fetchListings` requests `/v1/listings.json?subset=browse` with **no `type` filter**, so rental and
+sale listings both come back. Listing type is derived from the Salesforce `Tenure` field, mirroring
+sf-dahlia-web's `ListingIdentityService`:
+
+- **Sale**: `New sale`, `Resale`
+- **Rental**: `New rental`, `Re-rental`
+
+`src/services/listings.js` exposes `isSaleListing`, `isRentalListing`, and `groupListingsByTenure`
+(which drives the picker's Rental/Sale `<optgroup>`s, plus an "Other" catch-all so a listing with an
+unexpected `Tenure` never silently disappears).
+
+`isSaleListingId(listingId, server)` resolves type for IDs that never passed through the picker
+(manual entry, CSV uploads) by fetching the single listing. It caches per server+ID and treats any
+failure as rental, so an unreachable listing degrades to the previous behavior instead of throwing.
+
+`filterPreLotteryListings` keeps only listings with `Lottery_Status` unset or `"Not Yet Run"`, and
+sorts by name.
+
+## Application Payload
+
+Built by `buildApplicationPayload(listingId, preferences, overrides)` in
+`src/services/applications.js`. It is synchronous and pure, which is what makes the dry-run and
+export paths possible; anything requiring a network call must be fetched by the caller and passed in
+via `overrides`.
+
+Key fields:
+
+- `externalSessionId` — two UUIDs joined with `-`, also used as `uploaded_file.session_uid`
+- `primaryApplicant` — contact info, address, and GIS data (`xCoordinate`, `yCoordinate`,
+  `candidateScore`) needed for address validation
+- `shortFormPreferences` — see Preference Handling below
+- `formMetadata` — JSON **string** of completed sections, session uid, and last page
+
+Fixed/generated applicant data: faker first/last names, ISO timestamp as middle name (uniqueness
+marker), `dahlia.internal+{firstName}@gmail.com` email, faker DOB aged 21–80, address
+1 S VAN NESS AVE APT A, and `monthlyIncome: 6000`. When `generateExtras` is false the generated
+email/DOB/alternate contact are skipped and CSV-supplied values are used as-is.
+
+A percentage of applications get an alternate contact (`altContactPercent`) or are phone-only with
+no email (`noEmailPercent`).
+
+### Sale-Specific Fields
+
+Sale listings gate the short form behind a **Prerequisites** page that rentals don't have. When
+`overrides.isSale` is set, the payload gains these fields (source of truth:
+`sf-dahlia-web/app/assets/javascripts/short-form/templates/b0a-prerequisites.html.slim` and the
+`application` whitelist in `ShortFormDataService`):
+
+| Field                            | Value                                                    |
+| -------------------------------- | -------------------------------------------------------- |
+| `isFirstTimeHomebuyer`           | `true`                                                   |
+| `hasCompletedHomebuyerEducation` | `true`                                                   |
+| `homebuyerEducationAgency`       | random from `HOMEBUYER_EDUCATION_AGENCIES` (5 real names) |
+| `hasLoanPreapproval`             | `true`                                                   |
+| `lendingAgent`                   | Salesforce contact Id of an active loan officer           |
+
+`lendingAgent` IDs are **server-specific**, so `getLendingAgents(server)` fetches
+`/v1/short-form/lending_institutions`, flattens across institutions, keeps only active agents, and
+caches per server. If the fetch fails or returns nothing, `lendingAgent` is `null` rather than an
+error. Rental payloads contain none of these keys.
+
+These fields land in the Salesforce "Ownership Eligibility" section of the Application record.
+
+**Known gaps for sales:** the real form also requires document uploads (homebuyer education
+certificate, loan pre-approval letter) which this tool does not produce — the API accepts
+applications without them, but they will look incomplete to a leasing agent. Habitat listings
+(which swap homebuyer education for `hasMinimumCreditScore`) and DALP listings (which have their own
+screening step) are not specially handled.
+
+## Preference Handling
+
+- `PREFERENCE_NAME_MAP` converts human-readable preference names to developer codes (COP, V-COP,
+  DTHP, NRHP, L_W, RtR, RB, and `T1-` Tier 1 variants). Unknown names fall back to the listing's
+  lottery bucket short code, then to the raw name.
+- Only names in `VALID_RECORD_TYPES` may be used as `recordTypeDevName`; everything else must submit
+  as `"Custom"` with the preference identified by `listingPreferenceID`.
+- `buildShortFormPreferences` claims one preference and opts out of the rest.
+  `PREFERENCE_IMPLICATIONS` auto-claims implied preferences (veteran variants imply their
+  non-veteran counterparts; DTHP/NRHP imply L_W).
+- Every claimed preference needs a `naturalKey` of `"firstName,lastName,YYYY-MM-DD"`. Without it
+  Salesforce attaches no member and the preference does not process correctly.
+- A CSV `Preference` column can force a specific devName, or `None`/empty to claim nothing. An
+  unavailable preference throws rather than silently falling back.
+
+## Generation Flows
+
+`useApplicationGenerator` owns all state and exposes six flows across two tabs (Upload CSV, Manual
+Entry): submit, export-to-CSV, and on-screen preview, each in a single-listing and a CSV variant.
+Submissions are spaced 500ms apart and can be cancelled mid-run via a ref-based flag.
+
+`loadListingData(listingId, server)` is the shared entry point: it fetches preferences and listing
+type in parallel and, only for sales, the lending agents. It returns `{ preferences, saleOverrides }`
+where `saleOverrides` is `{}` for rentals, so rental behavior is unchanged. **Any new generation
+flow should call it rather than `getPreferences` directly**, otherwise sale applications will be
+built with rental-only fields.
+
+The CSV flows group rows by listing ID to minimize preference fetches, and distinguish a
+"listing not found" error (skip) from other failures (count as failed).
+
+## Listing-Specific Special Cases
+
+Listing `a0Wbb000002L0YXEA0` is treated as an SFUSD educator listing: 50% of applicants are marked
+`isSFUSDEmployee` with a random job classification, `workInSf: true`, and forced L_W plus Tier 1
+preference claiming.
+
+## Deployment
+
+Deployed on Vercel. `middleware.js` is an Edge Middleware password gate driven by the
+`APPLIBOT_PASSWORD` environment variable; if that variable is unset, access is open (local dev).
+The matcher deliberately excludes the `api-full` and `api-prod` prefixes so API rewrites bypass the
+gate.

@@ -1,5 +1,25 @@
 import { useCallback, useRef, useState } from "react";
-import { getPreferences, submitApplication, buildApplicationPayload, DEFAULT_SERVER } from "../services/applications";
+import { getPreferences, submitApplication, buildApplicationPayload, getLendingAgents, DEFAULT_SERVER } from "../services/applications";
+import { isSaleListingId } from "../services/listings";
+
+/**
+ * Loads everything needed to build applications for a listing: its preferences plus the
+ * extra overrides sale (ownership) listings require. Rental listings get an empty override
+ * set, so behavior is unchanged for them.
+ * @returns {Promise<{preferences: Array, saleOverrides: object}>}
+ */
+async function loadListingData(listingId, server) {
+	const [preferences, isSale] = await Promise.all([
+		getPreferences(listingId, server),
+		isSaleListingId(listingId, server),
+	]);
+
+	if (!isSale) {
+		return { preferences, saleOverrides: {} };
+	}
+
+	return { preferences, saleOverrides: { isSale: true, lendingAgents: await getLendingAgents(server) } };
+}
 
 function downloadCsv(headers, rows, filenamePrefix) {
 	const csvContent = [
@@ -66,7 +86,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 		try {
 			showStatus("Fetching preferences...", "info");
-			const preferences = await getPreferences(listingId, server);
+			const { preferences, saleOverrides } = await loadListingData(listingId, server);
 
 			showStatus(`Found ${preferences.length} preferences. Generating ${numApplications} application(s)...`, "info");
 
@@ -82,7 +102,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 
 				try {
 					const startTime = performance.now();
-					const result = await submitApplication(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras }, server);
+					const result = await submitApplication(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras, ...saleOverrides }, server);
 					const endTime = performance.now();
 					successCount += 1;
 
@@ -152,8 +172,9 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			for (const [listingId, rows] of Object.entries(appsByListing)) {
 				showStatus(`Fetching preferences for listing ${listingId}...`, "info");
 				let preferences;
+				let saleOverrides = {};
 				try {
-					preferences = await getPreferences(listingId, server);
+					({ preferences, saleOverrides } = await loadListingData(listingId, server));
 				} catch (error) {
 					console.error(`Failed to fetch preferences for ${listingId}:`, error);
 					const listingAppsCount = rows.reduce((acc, r) => acc + r.numApplications, 0);
@@ -189,7 +210,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 								preference: row.preference,
 								altContactPercent,
 								noEmailPercent,
-								generateExtras
+								generateExtras,
+								...saleOverrides
 							}, server);
 							const endTime = performance.now();
 							successCount++;
@@ -250,7 +272,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		cancelRef.current = false;
 		try {
 			showStatus("Fetching preferences...", "info");
-			const preferences = await getPreferences(listingId, server);
+			const { preferences, saleOverrides } = await loadListingData(listingId, server);
 
 			showStatus(`Building ${numApplications} application(s)...`, "info");
 
@@ -264,7 +286,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 					break;
 				}
 
-				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras });
+				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras, ...saleOverrides });
 				const claimedPrefs = payload.application.shortFormPreferences
 					.filter(p => !p.optOut)
 					.map(p => p.recordTypeDevName === "Custom"
@@ -336,8 +358,9 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			for (const [listingId, listingRows] of Object.entries(appsByListing)) {
 				showStatus(`Fetching preferences for listing ${listingId}...`, "info");
 				let preferences;
+				let saleOverrides = {};
 				try {
-					preferences = await getPreferences(listingId, server);
+					({ preferences, saleOverrides } = await loadListingData(listingId, server));
 				} catch (error) {
 					console.error(`Failed to fetch preferences for ${listingId}:`, error);
 					showStatus(`Failed to fetch preferences for listing ${listingId}. Skipping.`, "error");
@@ -361,7 +384,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 							preference: row.preference,
 							altContactPercent,
 							noEmailPercent,
-							generateExtras
+							generateExtras,
+							...saleOverrides
 						});
 						const claimedPrefs = payload.application.shortFormPreferences
 							.filter(p => !p.optOut)
@@ -420,7 +444,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 		setDryRunRows([]);
 		try {
 			showStatus("Fetching preferences...", "info");
-			const preferences = await getPreferences(listingId, server);
+			const { preferences, saleOverrides } = await loadListingData(listingId, server);
 
 			showStatus(`Building ${numApplications} application(s)...`, "info");
 
@@ -434,7 +458,7 @@ export default function useApplicationGenerator(defaultListingId = "") {
 					break;
 				}
 
-				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras });
+				const { payload, applicantDetails } = buildApplicationPayload(listingId, preferences, { altContactPercent, noEmailPercent, generateExtras, ...saleOverrides });
 				const claimedPrefs = payload.application.shortFormPreferences
 					.filter(p => !p.optOut)
 					.map(p => p.recordTypeDevName === "Custom"
@@ -504,8 +528,9 @@ export default function useApplicationGenerator(defaultListingId = "") {
 			for (const [listingId, listingRows] of Object.entries(appsByListing)) {
 				showStatus(`Fetching preferences for listing ${listingId}...`, "info");
 				let preferences;
+				let saleOverrides = {};
 				try {
-					preferences = await getPreferences(listingId, server);
+					({ preferences, saleOverrides } = await loadListingData(listingId, server));
 				} catch (error) {
 					console.error(`Failed to fetch preferences for ${listingId}:`, error);
 					showStatus(`Failed to fetch preferences for listing ${listingId}. Skipping.`, "error");
@@ -529,7 +554,8 @@ export default function useApplicationGenerator(defaultListingId = "") {
 							preference: row.preference,
 							altContactPercent,
 							noEmailPercent,
-							generateExtras
+							generateExtras,
+							...saleOverrides
 						});
 						const claimedPrefs = payload.application.shortFormPreferences
 							.filter(p => !p.optOut)
